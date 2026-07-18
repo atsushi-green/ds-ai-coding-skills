@@ -42,8 +42,7 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 │   ├── prompts/                       # 再利用プロンプト（Copilot）
 │   └── skills/                        # 作業別スキル（Copilot）
 ├── .claude/
-│   ├── skills/                        # 作業別スキル（Claude Code）
-│   └── commands/                      # スラッシュコマンド（Claude Code）
+│   └── skills/                        # 作業別スキル（Claude Code、旧スラッシュコマンドを含む）
 ├── docs/agent/                        # プロジェクト固有ドキュメント（共通）
 ├── data/
 │   ├── raw/                           # 元データ（不変・gitignore対象）
@@ -80,8 +79,7 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 | ファイル | 役割 |
 |----------|------|
 | `CLAUDE.md` | ハードルール・パッケージ管理・スキルルーティングを一元管理 |
-| `.claude/skills/*/SKILL.md` | 作業別の詳細手順（Copilot の skills と同内容） |
-| `.claude/commands/*.md` | スラッシュコマンド（`/plan-analysis`・`/run-eda` など） |
+| `.claude/skills/*/SKILL.md` | 作業別の詳細手順（Copilot の skills と同内容）。 |
 
 ### 共通リソース
 
@@ -106,10 +104,12 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 | `statistical-ml-review` | 統計・ML分析 |
 | `analysis-reporting` | 分析結果の報告 |
 
-### 利用可能なコマンド / プロンプト
+### タスク実行用スキル（旧コマンド / プロンプト）
 
-| コマンド | Claude Code | Copilot | 用途 |
-|----------|:-----------:|:-------:|------|
+Claude Code では `.claude/skills/*/SKILL.md` として（`/plan-analysis` のようにスラッシュでも起動可能）、Copilot では引き続き `.github/prompts/*.prompt.md` として提供されるタスク実行用スキル。
+
+| スキル | Claude Code | Copilot | 用途 |
+|--------|:-----------:|:-------:|------|
 | `plan-analysis` | `/plan-analysis` | prompt | 分析計画の作成 |
 | `review-sql` | `/review-sql` | prompt | SQLのレビュー |
 | `summarize-analysis` | `/summarize-analysis` | prompt | 分析結果の要約 |
