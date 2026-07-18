@@ -34,6 +34,7 @@ REQUIRED_FILES = [
     ".github/prompts/run-modeling.prompt.md",
     ".github/prompts/summarize-analysis.prompt.md",
     ".github/prompts/update-agent-docs.prompt.md",
+    ".github/prompts/sync-agent-docs.prompt.md",
     # --- Claude Code ---
     "CLAUDE.md",
     # Claude Code Skills
@@ -47,14 +48,15 @@ REQUIRED_FILES = [
     ".claude/skills/notebook-workflow/SKILL.md",
     ".claude/skills/statistical-ml-review/SKILL.md",
     ".claude/skills/analysis-reporting/SKILL.md",
-    # Claude Code Commands
-    ".claude/commands/plan-analysis.md",
-    ".claude/commands/prepare-pr.md",
-    ".claude/commands/review-sql.md",
-    ".claude/commands/run-eda.md",
-    ".claude/commands/run-modeling.md",
-    ".claude/commands/summarize-analysis.md",
-    ".claude/commands/update-agent-docs.md",
+    # Claude Code Task Skills (旧 commands)
+    ".claude/skills/plan-analysis/SKILL.md",
+    ".claude/skills/prepare-pr/SKILL.md",
+    ".claude/skills/review-sql/SKILL.md",
+    ".claude/skills/run-eda/SKILL.md",
+    ".claude/skills/run-modeling/SKILL.md",
+    ".claude/skills/summarize-analysis/SKILL.md",
+    ".claude/skills/update-agent-docs/SKILL.md",
+    ".claude/skills/sync-agent-docs/SKILL.md",
     # --- 共通ドキュメント ---
     "docs/agent/project-overview.md",
     "docs/agent/repository-structure.md",

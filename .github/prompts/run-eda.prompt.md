@@ -1,9 +1,11 @@
 ---
-agent: 'agent'
-description: 'Implement and run EDA for a dataset using this repository’s data science conventions'
+agent: "agent"
+description: "データセットのEDAを実装・実行する。引数: <dataset_path> <topic>"
 ---
 
-Implement EDA for the dataset below.
+# Skill: Run EDA
+
+このリポジトリの規約に従って、データセットのEDA（探索的データ分析）を実装する。
 
 Dataset:
 ${input:dataset_path:Path to the input dataset}
@@ -11,22 +13,20 @@ ${input:dataset_path:Path to the input dataset}
 Topic:
 ${input:topic:Short description of the analysis topic}
 
-Follow `AGENTS.md`, repository custom instructions, relevant skills, and `docs/agent/*`.
+`AGENTS.md`、`.github/skills/` 配下の関連スキル、`docs/agent/*` に従って以下を実施する。
 
-Expected work:
+1. 元データを不変の入力として読み込む。
+2. 再利用可能なEDAコードを `src/analysis_project/` 配下に作成する。
+3. EDAを実行するスクリプトを `scripts/` 配下に作成する。
+4. 集計テーブルを `outputs/tables/` に保存する。
+5. 図を `outputs/figures/` に保存する。
+6. データ取り扱い、パス、Pythonスタイル、DataFrame操作、可視化についてリポジトリの規約に従う。
+7. 可能であればEDAスクリプトと品質チェックを実行する。
 
-1. Read the raw dataset as immutable input.
-2. Create reusable EDA code under `src/analysis_project/`.
-3. Create a script under `scripts/` to run the EDA.
-4. Save summary tables under `outputs/tables/`.
-5. Save figures under `outputs/figures/`.
-6. Use repository conventions for data handling, paths, Python style, DataFrame operations, and visualization.
-7. Run the EDA script and quality checks if possible.
+最後に日本語で以下をまとめる。
 
-At the end, summarize in Japanese:
-
-- files created or changed
-- commands run
-- outputs generated
-- main findings
-- any remaining issues
+- 作成・変更したファイル
+- 実行したコマンド
+- 生成した出力物
+- 主な発見事項
+- 残課題

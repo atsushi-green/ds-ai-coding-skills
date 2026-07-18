@@ -115,8 +115,23 @@ Claude Code では `.claude/skills/*/SKILL.md` として（`/plan-analysis` の�
 | `summarize-analysis` | `/summarize-analysis` | prompt | 分析結果の要約 |
 | `prepare-pr` | `/prepare-pr` | prompt | PR概要の作成 |
 | `update-agent-docs` | `/update-agent-docs` | prompt | エージェント文書の更新 |
+| `sync-agent-docs` | `/sync-agent-docs` | prompt | Claude/Copilot間のスキル差分の同期 |
 | `run-eda` | `/run-eda` | — | EDAの実装・実行 |
 | `run-modeling` | `/run-modeling` | — | 予測モデリングの実装・評価 |
+
+### Claude/Copilot間のスキル同期
+
+Claude Code と GitHub Copilot のスキルは2種類の対応関係を持ちます。
+
+- **通常スキル**: `.claude/skills/<name>/SKILL.md` ⇔ `.github/skills/<name>/SKILL.md`。スキル内リンクの相対パス表記を除いて同一内容。
+- **タスク実行スキル**（frontmatter に `disable-model-invocation: true`）: `.claude/skills/<name>/SKILL.md` ⇔ `.github/prompts/<name>.prompt.md`。frontmatter 形式を変換し、Copilot の `${input:...}` プレースホルダや `CLAUDE.md`⇔`AGENTS.md` の相互参照を保持・変換しながら同期。
+
+片方を編集すると差分が生じるため、以下の仕組みで検出・解消します。
+
+- `uv run python scripts/sync_agent_docs.py --check` — 書き込みせず差分の有無だけを判定する（`run_quality_checks.sh` / CIに組み込み済み。通常スキルの差分のみ終了コード1）。
+- `uv run python scripts/sync_agent_docs.py --from claude`（または `--from github`） — **編集した側を明示して**もう一方へ反映する。方向は必須（mtime による自動判定はしない）。
+- `/sync-agent-docs`（Claude Code）・prompt（Copilot） — 上記スクリプトを実行した上で、片側にしか存在しないスキルなど、判断が必要な差分をエージェントが解消する。
+- ロジックのテスト: `uv run pytest tests/test_sync_agent_docs.py`。
 
 ## データの安全性ルール
 

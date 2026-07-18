@@ -1,18 +1,24 @@
 ---
 agent: "agent"
-description: "Review SQL for correctness and safety"
+description: "SQLクエリの正確性と安全性をレビューする"
 ---
-Review the provided SQL query using the checklist from `.github/skills/sql-analysis/SKILL.md`.
 
-Check for:
-- `SELECT *` usage (should use explicit columns)
-- Missing date filters on large tables
-- Join cardinality issues (1:1, 1:N, M:N)
-- Row count validation before and after joins
-- Destructive statements (DROP, TRUNCATE, DELETE, UPDATE)
-- Unclear metric definitions
-- NULL handling
-- Duplicate risk
-- Implicit cross joins
+# Skill: Review SQL
 
-Provide feedback in Japanese with specific line references and suggested fixes.
+[sql-analysis](.github/skills/sql-analysis/SKILL.md) のチェックリストを使って、提示されたSQLクエリをレビューする。
+
+レビュー対象のクエリが渡されていない場合は、ユーザーにレビューしたいSQLクエリを貼り付けるよう依頼する。
+
+## チェック項目
+
+- `SELECT *` の使用（明示的なカラム指定にすべきか）
+- 大規模テーブルへの日付フィルタの欠如
+- JOINカーディナリティの問題（1:1, 1:N, M:N）
+- JOIN前後の行数検証
+- 破壊的な文（DROP, TRUNCATE, DELETE, UPDATE）
+- 指標定義の曖昧さ
+- NULLの扱い
+- 重複のリスク
+- 暗黙的なクロスジョイン
+
+具体的な行参照と修正案を添えて、日本語でフィードバックする。

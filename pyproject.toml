@@ -30,6 +30,8 @@ dev = [
     "ruff",
     "mypy",
     "pre-commit",
+    "pyyaml>=6.0.3",
+    "types-pyyaml>=6.0.12.20260518",
 ]
 
 [tool.ruff]
@@ -43,7 +45,8 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 python_version = "3.11"
 warn_unused_ignores = true
 no_implicit_optional = true
+mypy_path = "src:scripts"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "scripts"]

@@ -22,4 +22,7 @@ uv run python scripts/check_no_sensitive_patterns.py
 echo "=== Validate agent docs ==="
 uv run python scripts/validate_agent_docs.py
 
+echo "=== Check Claude/Copilot skill sync ==="
+uv run python scripts/sync_agent_docs.py --check
+
 echo "=== All checks passed ==="

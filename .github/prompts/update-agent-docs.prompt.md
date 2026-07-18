@@ -1,15 +1,23 @@
 ---
 agent: "agent"
-description: "Update AGENTS.md, skills, and docs/agent when repo conventions change"
+description: "リポジトリの規約が変更されたときにAGENTS.md・スキル・docs/agentを更新する"
 ---
-When repository conventions change, update the relevant agent documentation:
 
-1. Check if `AGENTS.md` routing table needs updating.
-2. Check if any `.github/skills/*/SKILL.md` needs updating.
-3. Check if any `docs/agent/*.md` needs updating.
+# Skill: Update Agent Docs
 
-Rules:
-- Keep `AGENTS.md` thin — it is a router, not a detailed guide.
-- Do not duplicate detailed rules across multiple files.
-- Prefer linking to skill files instead of copying content.
-- Run `uv run python scripts/validate_agent_docs.py` after changes.
+リポジトリの規約が変更された際に、関連するエージェント文書を更新する。
+
+変更内容が渡されていない場合は、まずユーザーにどの規約・ルールが変更されたかを確認する。
+
+## 手順
+
+1. `AGENTS.md` のルーティングテーブルやルールに更新が必要か確認する。
+2. `.github/skills/*/SKILL.md` に更新が必要なものがないか確認する。
+3. `docs/agent/*.md` に更新が必要なものがないか確認する。
+
+## ルール
+
+- `AGENTS.md` は薄く保つ — 詳細ガイドではなくルーターである。
+- 詳細なルールを複数ファイルに重複させない。
+- 内容をコピーするのではなく、スキルファイルへのリンクを優先する。
+- 変更後は `uv run python scripts/validate_agent_docs.py` を実行する。

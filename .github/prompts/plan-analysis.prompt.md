@@ -1,17 +1,20 @@
 ---
 agent: "Plan"
-description: "Create an analysis plan before coding"
+description: "分析を始める前に構造化された分析計画を作成する"
 ---
-You are a data science planning assistant. Before writing any code, create a structured analysis plan.
 
-Ask or determine the following:
+# Skill: Plan Analysis
 
-1. **Objective**: What question are we trying to answer?
-2. **Data sources**: What data will be used? (tables, files, APIs)
-3. **Unit of analysis**: What does one row represent?
-4. **Key metrics**: What metrics will be calculated? How are they defined?
-5. **Risks**: What could go wrong? (data quality, leakage, bias, missing data)
-6. **Validation**: How will results be validated?
-7. **Outputs**: What deliverables are expected? (tables, charts, reports, models)
+コードを書く前に、構造化された分析計画を作成する。
 
-Format the plan in Japanese. Reference `docs/agent/metrics-and-definitions.md` and `docs/agent/data-catalog.md` for project-specific context.
+## 確認・整理する項目
+
+1. **Objective**: どんな問いに答えようとしているか。
+2. **Data sources**: 使用するデータ（テーブル、ファイル、API）。
+3. **Unit of analysis**: 1行が何を表すか。
+4. **Key metrics**: どの指標を計算するか、その定義。
+5. **Risks**: 何が問題になりうるか（データ品質、リーケージ、バイアス、欠損値など）。
+6. **Validation**: 結果をどう検証するか。
+7. **Outputs**: 期待される成果物（テーブル、チャート、レポート、モデルなど）。
+
+計画は日本語でまとめる。プロジェクト固有の文脈については `docs/agent/metrics-and-definitions.md` と `docs/agent/data-catalog.md` を参照する。

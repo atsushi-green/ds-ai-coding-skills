@@ -1,9 +1,11 @@
 ---
-agent: 'agent'
-description: 'Implement and evaluate a simple predictive model using this repository’s ML conventions'
+agent: "agent"
+description: "予測モデリングのワークフローを実装・評価する。引数: <dataset_path> <target> <task>"
 ---
 
-Implement a predictive modeling workflow for the dataset below.
+# Skill: Run Modeling
+
+このリポジトリの規約に従って、予測モデリングのワークフローを実装する。
 
 Dataset:
 ${input:dataset_path:Path to the input dataset}
@@ -14,28 +16,26 @@ ${input:target:Target variable}
 Task:
 ${input:task:Prediction task description}
 
-Follow `AGENTS.md`, repository custom instructions, relevant skills, and `docs/agent/*`.
+`AGENTS.md`、`.github/skills/` 配下の関連スキル、`docs/agent/*` に従って以下を実施する。
 
-Expected work:
+1. 特徴量エンジニアリングのコードを `src/analysis_project/` 配下に作成する。
+2. モデリングのコードを `src/analysis_project/` 配下に作成する。
+3. 学習・評価を実行するスクリプトを `scripts/` 配下に作成する。
+4. ベースラインモデルとシンプルなMLモデルを最低1つずつ比較する。
+5. train/validation分割を使用する。
+6. ターゲットリーケージを確認する。
+7. 評価指標を `outputs/tables/` に保存する。
+8. 関連する図を `outputs/figures/` に保存する。
+9. 特徴量エンジニアリングのテストを追加・更新する。
+10. 可能であればテストと品質チェックを実行する。
 
-1. Create feature engineering code under `src/analysis_project/`.
-2. Create modeling code under `src/analysis_project/`.
-3. Create a script under `scripts/` to run training and evaluation.
-4. Compare at least one baseline model with one simple ML model.
-5. Use a train/validation split.
-6. Check for target leakage.
-7. Save metrics under `outputs/tables/`.
-8. Save relevant figures under `outputs/figures/`.
-9. Add or update tests for feature engineering.
-10. Run tests and quality checks if possible.
+最後に日本語で以下をまとめる。
 
-At the end, summarize in Japanese:
-
-- files created or changed
-- features used
-- baseline result
-- model results
-- best model
-- limitations
-- commands run
-- remaining issues
+- 作成・変更したファイル
+- 使用した特徴量
+- ベースラインの結果
+- モデルの結果
+- 最良モデル
+- 制限事項・注意点
+- 実行したコマンド
+- 残課題
