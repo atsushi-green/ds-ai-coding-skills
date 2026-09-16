@@ -12,6 +12,7 @@ data/external/**
 !data/external/.gitkeep
 
 # Large output artifacts
+outputs/diagnostics/
 outputs/**/*.pkl
 outputs/**/*.parquet
 outputs/**/*.csv
