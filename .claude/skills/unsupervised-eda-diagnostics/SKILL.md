@@ -1,0 +1,69 @@
+---
+name: unsupervised-eda-diagnostics
+description: >-
+  教師なし分析と EDA 前処理（欠測 / 欠損 / NaN / 補完 / imputation / 外れ値処理、クラスタリング / セグメンテーション /
+  k-means / 階層クラスタリング / GMM / DBSCAN、次元削減 / PCA / 主成分分析 / 因子分析 / UMAP / t-SNE、異常検知 /
+  anomaly detection / 不正検知）を実行したら必ずセットで出す図と値のルーター。fillna, dropna, fill_null,
+  SimpleImputer, IterativeImputer, missingno, KMeans, AgglomerativeClustering, DBSCAN, GaussianMixture,
+  silhouette_score, dendrogram, PCA, FactorAnalysis, calculate_kmo, TSNE, umap.UMAP, IsolationForest,
+  LocalOutlierFactor, pyod がコードに現れたとき、またはユーザーが「欠損を埋めて」「クラスタリングして」「主成分で
+  要約して」「異常を検知して」「データをきれいにして」と言ったときに使う。安定性・k の根拠・平行分析・ベースラインに
+  言及がなくても適用する。SKILL.md のルーティング表で手法を特定し、対応する references/<手法>.md を読んでから実行する。
+  教師あり予測は predictive-modeling-diagnostics、回帰・検定は statistical-inference-diagnostics を使う。
+---
+
+# 教師なし分析・EDA 前処理の必須セット（ルーター）
+
+分析の実行と診断は不可分である。モデルを当てはめて係数やスコアだけを返すのは分析の前半でしかなく、
+本スキルの適用下では未完了とみなす。ユーザーが診断・図・残差に言及しなくても、該当する references の図と値は必ず出す。
+
+## 使い方（この順で）
+
+1. 下のルーティング表で、これから書く（またはコードにある）手法の行を見つける。複数該当なら全部（例: PCA → k-means なら `dimensionality-reduction` + `clustering`）
+2. その行の `references/<手法>.md` を**読んでから**分析を実行する（読まずに当てはめない）
+3. 図を保存し、報告に「出力と報告」の判定表を載せる
+
+## ルーティング表
+
+| 手法 | トリガー語彙（コード / 日本語） | 読むファイル |
+|---|---|---|
+| 欠測・外れ値・EDA 前処理（削除 / 代入 / 多重代入、分布・相関の確認） | `fillna` `dropna` `isna` `fill_null` `drop_nulls` `SimpleImputer` `IterativeImputer` `KNNImputer` `MICEData` `missingno` / 欠損、補完、外れ値 | `references/missing-data.md` |
+| クラスタリング（k-means・階層・GMM・DBSCAN） | `KMeans` `AgglomerativeClustering` `DBSCAN` `HDBSCAN` `GaussianMixture` `silhouette_score` `linkage` `dendrogram` / セグメント、グループ分け | `references/clustering.md` |
+| 次元削減・因子分析・埋め込み（PCA・EFA・CFA / SEM・UMAP・t-SNE） | `PCA` `FactorAnalysis` `FactorAnalyzer` `calculate_kmo` `TSNE` `umap.UMAP` `semopy` `TruncatedSVD` / 主成分、潜在因子、2 次元に落とす | `references/dimensionality-reduction.md` |
+| 異常検知・外れ値検知（教師なし / ラベル少数） | `IsolationForest` `LocalOutlierFactor` `OneClassSVM` `EllipticEnvelope` `pyod` `score_samples` `contamination` / 異常、不正 | `references/anomaly-detection.md` |
+
+## 隣接する手法（このルーターでは扱わない）
+
+| 手法 | 使う skill |
+|---|---|
+| 教師あり予測・木モデル・SHAP、時系列予測 | `predictive-modeling-diagnostics` |
+| 回帰・GLM・検定・生存時間・MCMC | `statistical-inference-diagnostics` |
+| A/B テスト・傾向スコア・DiD | `causal-inference-diagnostics` |
+| シミュレーション・最適化 | `simulation-optimization-diagnostics` |
+
+## 出力と報告（全手法共通）
+
+- 図は `outputs/diagnostics/<YYYYMMDD-HHMM>_<短縮名>/` に保存する（短縮名は各 references の冒頭）。報告にはパスと下の表だけを載せ、図は貼らない
+- 図は 1 手法 1 枚の複合図を基本とし、各パネルのタイトルに「何を見る図か — 何が見えれば合格か」を書く。判定基準線は破線で描く
+- 乱数を使う処理は seed を固定し報告に明記する。日本語フォント・配色・保存形式は visualization skill に従う
+- コードの役割は図の保存と診断値の計算まで。値は「項目名 → 数値」の表（polars の DataFrame。pandas を返すライブラリの結果はそのまま載せてよい）にまとめて表示し、必要なら CSV で保存する。判定・合格基準・次アクションの文字列はコードで組み立てない
+- 報告の「診断サマリー」に次の表を載せる。実測値はコードが出した値を転記し、判定（`OK` / `要対処` / `確認`＝人間の判断待ち）と次アクションは references の合格基準と図を見て報告側で書く。`要対処` には必ず次アクションを書く。全項目 OK でも表を出す
+
+| 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |
+|---|---|---|---|---|
+| シルエット平均 (k=4) | 0.18 | > 0.25 | 要対処 | GMM の BIC と DBSCAN を試し、構造の有無を再検討 |
+| リストワイズ削除で失う n | 31% | 報告 | 要対処 | MICE（m=20）に切替 |
+
+## 全手法共通の落とし穴
+
+- 単位の異なる変数を標準化せずに距離ベースの手法（k-means・LOF・PCA）にかけない。歪んだ変数は先に log 変換
+- 「クラスタに名前を付けた」「上位 k 件を出した」で終わらない。安定性（seed / 手法間）と、人間が確認できる形（プロファイル表・z スコア）まで出す
+- 生データは変更しない。除外・変換・代入は件数付きで操作ログに残し、派生データとして保存する
+- 判定表をコードで生成しない。基準ごとの if 分岐や解釈・次アクションの文章をスクリプトに埋め込むと、分析コードが報告文で膨らみ、人間の判断を自動化したように見せてしまう（前提が崩れたら処理を止める `assert` は別）
+  ```python
+  # NG: 判定と次アクションをコードの分岐で組み立てる
+  verdict = "OK" if sil > 0.25 else "要対処"
+  # OK: 値を表で出すだけ。判定と次アクションは報告に書く
+  vals = {"silhouette": sil, "ari_seed": ari, "min_cluster_share": min_share}
+  print(pl.DataFrame({"項目": list(vals), "値": list(vals.values())}))
+  ```
