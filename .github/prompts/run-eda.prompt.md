@@ -21,7 +21,8 @@ ${input:topic:Short description of the analysis topic}
 4. 集計テーブルを `outputs/tables/` に保存する。
 5. 図を `outputs/figures/` に保存する。
 6. データ取り扱い、パス、Pythonスタイル、DataFrame操作、可視化についてリポジトリの規約に従う。
-7. 可能であればEDAスクリプトと品質チェックを実行する。
+7. 欠測・外れ値を扱う場合は `unsupervised-eda-diagnostics` skill（`references/missing-data.md`）の「必ず出す図・値」を出し、診断サマリー表を作成する。
+8. 可能であればEDAスクリプトと品質チェックを実行する。
 
 最後に日本語で以下をまとめる。
 
