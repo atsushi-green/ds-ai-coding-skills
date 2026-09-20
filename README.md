@@ -132,6 +132,7 @@ Claude Code と GitHub Copilot のスキルは2種類の対応関係を持ちま
 - `uv run python scripts/sync_agent_docs.py --from claude`（または `--from github`） — **編集した側を明示して**もう一方へ反映する。方向は必須（mtime による自動判定はしない）。
 - `/sync-agent-docs`（Claude Code）・prompt（Copilot） — 上記スクリプトを実行した上で、片側にしか存在しないスキルなど、判断が必要な差分をエージェントが解消する。
 - ロジックのテスト: `uv run pytest tests/test_sync_agent_docs.py`。
+- `*-diagnostics` skill は `.github/skills/` 側がシンボリックリンクなので、同期スクリプトでは常に in sync として扱われます（編集は `.claude/skills/` 側のみ）。
 
 ## データの安全性ルール
 
