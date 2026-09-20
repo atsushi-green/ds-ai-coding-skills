@@ -18,7 +18,7 @@
 - PCA / EFA: スクリープロットに**平行分析**のランダム固有値（95 パーセンタイル）を重ねる（推奨因子数に縦破線） — 実データの固有値がランダムを上回る数が因子数
 - PCA / EFA: バイプロット（スコアの散布 + 負荷ベクトル） — 変数ベクトルの向きで軸の意味が読めれば合格
 - EFA: 回転後負荷量のヒートマップ — 各変数の主負荷 ≥ 0.4 かつ交差負荷 < 0.3 なら合格
-- UMAP / t-SNE: ハイパラを変えた 3 枚以上のグリッド（perplexity 5 / 30 / 50 または n_neighbors 5 / 15 / 50） — 大域構造が設定間で保たれれば合格。「クラスタの大きさと距離は意味を持たない」を図に注記
+- UMAP / t-SNE: ハイパラを変えた 3 枚以上のグリッド（perplexity 5 / 30 / 50 または n_neighbors 5 / 15 / 50。各パネルに trustworthiness を併記） — 大域構造が設定間で保たれれば合格。「クラスタの大きさと距離は意味を持たない」を図に注記
 
 ## 必ず出す値
 
@@ -30,23 +30,31 @@
 | EFA: 共通性 | > 0.3 | 低い変数の除外を検討 |
 | 累積寄与率 | 用途依存（縮約なら 70〜80%） | 低ければ「圧縮の価値が薄い」と報告 |
 | SEM / CFA: 適合度 | CFI / TLI ≥ 0.95、RMSEA ≤ 0.06（90% CI 併記）、SRMR ≤ 0.08 を全部併記 | モデル再指定（修正指数を機械的に採用しない） |
+| UMAP / t-SNE: trustworthiness（近傍保存率） | > 0.9 目安（`n_neighbors` を明記） | perplexity / n_neighbors を変える。それでも低ければ埋め込みの図で構造を語らない |
 | UMAP / t-SNE: seed 3 本で構造が同じか | 安定 | 「設定依存」と明記 |
-| 標準化の有無 | 単位が異なる変数は標準化済み | 未標準化だと第 1 主成分が単位の大きい変数に支配される |
+| 標準化の有無（= 相関行列 PCA か共分散行列 PCA か） | どちらを使ったか報告に明記。単位が混在するなら標準化（相関行列） | 未標準化だと第 1 主成分が分散の大きい変数に支配される。全列が同一単位で分散差が情報なら素のままを選び、その理由を書く |
 
-取得例（動作確認済み。平行分析と EFA）:
+取得例（`X` は数値列だけの polars DataFrame）:
 
 ```python
-from factor_analyzer import calculate_kmo, calculate_bartlett_sphericity
+import numpy as np
+from factor_analyzer.factor_analyzer import calculate_kmo, calculate_bartlett_sphericity
 from sklearn.decomposition import PCA, FactorAnalysis
+from sklearn.manifold import TSNE, trustworthiness
+from sklearn.preprocessing import StandardScaler
 
-kmo_all, kmo_model = calculate_kmo(X); bart_chi2, bart_p = calculate_bartlett_sphericity(X)
-Xs = StandardScaler().fit_transform(X)
+Xm = X.to_numpy()  # factor_analyzer・sklearn には配列で渡す
+kmo_per, kmo_all = calculate_kmo(Xm)  # 返り値は（変数ごとの MSA, 全体の KMO）の順。逆に受けると判定を誤る
+bart_chi2, bart_p = calculate_bartlett_sphericity(Xm)
+Xs = StandardScaler().fit_transform(Xm)
 eig = PCA().fit(Xs).explained_variance_
 rng = np.random.default_rng(0)  # 平行分析: 同形の乱数データの固有値（95 パーセンタイル）と比較
 rand_eig = np.array([PCA().fit(rng.standard_normal(Xs.shape)).explained_variance_ for _ in range(100)])
 n_factors = int((eig > np.percentile(rand_eig, 95, axis=0)).sum())
-fa = FactorAnalysis(n_components=n_factors, rotation="varimax").fit(Xs)
+fa = FactorAnalysis(n_components=n_factors, rotation="varimax", random_state=0).fit(Xs)  # seed を固定
 loadings = fa.components_.T; communalities = (loadings**2).sum(axis=1)  # 主負荷 ≥ 0.4、共通性 > 0.3
+emb = TSNE(2, perplexity=30, random_state=0, init="random").fit_transform(Xs)  # seed と init を固定
+trust = trustworthiness(Xs, emb, n_neighbors=10)  # 近傍保存率（> 0.9 目安）
 ```
 
 ## 落とし穴
