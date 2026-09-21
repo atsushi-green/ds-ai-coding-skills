@@ -10,8 +10,8 @@
 ## ライブラリ
 
 - linearmodels（`PanelOLS`、`IV2SLS`）、pyfixest（`feols`。高次元固定効果・ワイルドクラスタブートストラップ）、statsmodels（`cov_type="cluster"`）
-- rdrobust（Python 版。RDD の局所多項式・最適バンド幅）、pysyncon（合成コントロール）
-- Python に無いもの（rddensity の完全版、Callaway-Sant'Anna、Sun-Abraham 等）は「R 推奨（rddensity / did / fixest）」と 1 行書く。未導入なら `uv add linearmodels pyfixest`
+- rdrobust・rddensity（ともに Python 版。局所多項式と最適バンド幅 / 閾値の操作検定）、pysyncon（合成コントロール）
+- Python に無いもの（Callaway-Sant'Anna、Sun-Abraham、honest DiD 等）は「R 推奨（did / fixest / HonestDiD）」と 1 行書く。未導入なら `uv add linearmodels pyfixest rdrobust rddensity`
 
 ## 全設計で共通して必ず出すもの
 
@@ -35,14 +35,15 @@
 | DiD | クラスタ数 | ≥ 30〜50 | `pyfixest` の `wildboottest` でワイルドクラスタブートストラップ |
 | DiD | プラセボ効果（偽の処置時点） | ≈ 0 | 識別仮定を疑う |
 | DiD | 段階的処置（staggered）の扱い | TWFE の負の重みを回避した推定量（Callaway-Sant'Anna 等）と併記 | 「R 推奨（did）」と書く |
-| IV | 頑健 first-stage F | **> 10**（最低線。`res.first_stage.diagnostics["f.stat"]`） | 弱操作変数。Anderson-Rubin CI を主結果に |
-| IV | OLS と 2SLS の並置、過剰識別なら Hansen J p | 併記 / J p > 0.05 | 除外制約を言葉で正当化し直す |
-| RDD | McCrary 密度検定 p | > 0.05 | 操作（閾値の操作）を疑う。「R 推奨（rddensity）」 |
-| RDD | 共変量の閾値での跳び、閾値近傍の n | 跳びなし / n を報告 | 設計を疑う |
+| IV | 頑健 first-stage F | **> 10**（最低線）。`res.first_stage.diagnostics` の `f.stat` は頑健・クラスタ指定だと chi2(k) が返るので、**操作変数の数 k で割って**から比べる | 弱操作変数。AR 信頼区間を主結果に（β をグリッドで動かして検定を反転して作る。linearmodels の `res.anderson_rubin` は過剰識別検定で別物） |
+| IV | OLS と 2SLS の並置、過剰識別なら Hansen J p | 併記 / J p > 0.05（2SLS 頑健は `res.wooldridge_overid`、J そのものは `IVGMM(...).fit().j_stat`） | 除外制約を言葉で正当化し直す |
+| RDD | McCrary 密度検定 p（`rddensity(X=x - c, c=0).test["p_jk"]`） | > 0.05 | running variable の操作を疑う。閾値近傍の質量点・申請フローを確認 |
+| RDD | 推定値と CI の行 | `rdrobust` の `coef` / `ci` は Conventional / Bias-Corrected / **Robust** の 3 行。MSE 最適バンド幅なら Robust（点推定はバイアス補正値、CI は広い方）を主結果にする | 最適バンド幅と Conventional CI の組み合わせで報告していたら出し直す |
+| RDD | 共変量の閾値での跳び、閾値両側の有効 n、多項式次数 | 跳びなし / n と次数（局所線形なら p=1）を報告 | 設計を疑う |
 | 合成コントロール | 処置前 RMSPE、ドナー重みの表 | 処置前 RMSPE が小さい（対 処置後 RMSPE 比を併記） | ドナープール再選択 |
 | 合成コントロール | 順列 p 値、leave-one-out | 処置ユニットの比が上位 / 安定 | 効果を主張しない |
 
-取得例（動作確認済み。DiD イベントスタディ + クラスタ頑健 SE）:
+取得例（DiD イベントスタディ + クラスタ頑健 SE）:
 
 ```python
 import polars as pl
@@ -68,5 +69,6 @@ print("clusters =", df2["cluster_id"].n_unique(), "(< 30〜50 ならワイルド
   ```
 - IV で first-stage F を報告せず 2SLS の係数だけ出さない。除外制約は検定できないので言葉で正当化する
 - RDD で全データに高次多項式（≥ 3 次）を当てない。局所線形 + 最適バンド幅が基本
+- 処置前係数が有意でないことを「並行トレンドが成立した」と読み替えない。検出力が低いだけのことが多い（リード係数の CI が推定したい効果量を含むなら、平行かどうか何も言えていない。honest DiD は R 推奨）
 - クラスタを個人単位にしない（処置が都道府県単位なら都道府県でクラスタ）
 - 合成コントロールで処置前 RMSPE が大きいドナー構成のまま処置後の乖離を「効果」と呼ばない

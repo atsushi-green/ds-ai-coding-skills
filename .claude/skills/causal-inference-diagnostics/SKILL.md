@@ -4,7 +4,7 @@ description: >-
   因果推論・効果検証（A/B テスト / ABテスト / オンライン実験 / リフト / SRM / CUPED、観察データの処置効果 / ATE / ATT /
   CATE / 傾向スコア / propensity score / IPW / 二重頑健 / DML / causal forest、準実験 / 差の差 / DiD / イベントスタディ /
   操作変数 / IV / 2SLS / 回帰不連続 / RDD / 合成コントロール）を実行したら必ずセットで出す図と値のルーター。
-  proportions_ztest, chisquare, statsmodels.stats.power, dowhy, econml, causalml, propensity, LinearDML, linearmodels,
+  proportions_ztest, chisquare, statsmodels.stats.power, dowhy, econml, causalml, doubleml, propensity, LinearDML, linearmodels,
   IV2SLS, PanelOLS, pyfixest, rdrobust, pysyncon, treat*post がコードに現れたとき、またはユーザーが「ABテストの結果を
   見て」「施策の効果を推定して」「差の差で」「傾向スコアで揃えて」「閾値前後で比較して」と言ったときに使う。SRM・
   バランス・並行トレンド・first-stage に言及がなくても適用する。SKILL.md のルーティング表で設計を特定し、対応する
@@ -28,7 +28,7 @@ description: >-
 | 設計 | トリガー語彙（コード / 日本語） | 読むファイル |
 |---|---|---|
 | A/B テスト・オンライン実験（ランダム割付） | `proportions_ztest` `confint_proportions_2indep` `chisquare` `statsmodels.stats.power` `ttest_ind` `variant` / リフト、バリアント、SRM、CUPED | `references/ab-test.md` |
-| 観察データ: 傾向スコア（マッチング / IPW）・二重頑健・DML・causal forest | `dowhy` `CausalModel` `econml` `LinearDML` `CausalForestDML` `causalml` `propensity` `ipw` / 処置効果、ATE、ATT、CATE | `references/causal-observational.md` |
+| 観察データ: 傾向スコア（マッチング / IPW）・二重頑健・DML・causal forest | `dowhy` `CausalModel` `econml` `LinearDML` `CausalForestDML` `doubleml` `DoubleMLPLR` `causalml` `propensity` `ipw` / 処置効果、ATE、ATT、CATE | `references/causal-observational.md` |
 | 準実験: DiD・イベントスタディ・IV / 2SLS・RDD・合成コントロール | `linearmodels` `IV2SLS` `PanelOLS` `pyfixest` `feols` `rdrobust` `pysyncon` `treat*post` `entity_effects` / 差の差、並行トレンド、操作変数、閾値 | `references/causal-quasi-experimental.md` |
 
 ## 隣接する手法（このルーターでは扱わない）
@@ -57,7 +57,7 @@ description: >-
 
 - 効果の点推定だけ返して終わらない。ナイーブ比較との併置、95% CI、識別仮定、プラセボ / 感度分析が揃うまで未完了
 - 観察データ・準実験の結論には必ず「（識別仮定）の下で」を付ける。仮定が検定で確認できないものは言葉で正当化する
-- 予測モデルの作法（train/test 分割で「テスト」する、AUC を上げる）を効果推定に持ち込まない。PS の目的はバランスであって予測精度ではない
+- 予測モデルの作法（train/test 分割で「テスト」する、AUC を上げる）を効果推定に持ち込まない。PS の目的はバランスであって予測精度ではない（DML の cross-fitting は推定量の一部なので別）
 - 判定表をコードで生成しない。基準ごとの if 分岐や解釈・次アクションの文章をスクリプトに埋め込むと、分析コードが報告文で膨らみ、人間の判断を自動化したように見せてしまう（前提が崩れたら処理を止める `assert` は別）
   ```python
   # NG: 判定と次アクションをコードの分岐で組み立てる
