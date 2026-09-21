@@ -9,7 +9,7 @@
 
 ## ライブラリ
 
-- dowhy（識別 → 推定 → 反駁の骨格）、econml（`LinearDML`、`CausalForestDML`）、statsmodels（回帰調整・WLS）
+- dowhy（識別 → 推定 → 反駁の骨格）、econml（`LinearDML`、`CausalForestDML`）、doubleml（`DoubleMLPLR`）、statsmodels（回帰調整・WLS）
 - scikit-learn（PS モデル。love plot・重み分布は matplotlib で自前）。未導入なら `uv add dowhy econml`。無ければ sklearn + statsmodels で PS と IPW を自前実装
 
 ## 必ず出す図
@@ -30,9 +30,12 @@
 | PS モデルの AUC | **極端に高くない（> 0.9 は警戒）** | 高 AUC はオーバーラップ不良のサイン。処置を予測しすぎる変数を疑う |
 | トリミング範囲と除外 n | 明記（推定対象の母集団が変わることも明記） | — |
 | IPW: 有効サンプルサイズ（Kish） | n の半分以上目安 | 安定化重み、トリミング（PS 0.05〜0.95 等） |
+| マッチング: マッチ率・マッチ後 n・キャリパー・復元の有無 | 全て報告（脱落が大きいと推定対象の母集団が変わる） | キャリパー緩和、1:k マッチ、IPW へ切替 |
+| DML / causal forest: cross-fitting の分割数と seed | 明記（分割なしで推定しない。2〜5 が目安） | `cv=` を指定して再推定 |
+| DML / causal forest: nuisance モデルの out-of-fold 性能 | 結果モデル・処置モデルの両方を報告（R² / AUC） | 処置 AUC が極端に高いならオーバーラップ不良、低すぎるなら効果の識別情報が無い |
 | 感度分析（E-value、Rosenbaum Γ 等） | 効果を覆すのに必要な未観測交絡の強さ > 観測された最強の交絡 | 結論を弱める（「仮定の下で」を強調） |
 
-取得例（動作確認済み。ATE の IPW とバランス）:
+取得例（ATE の IPW とバランス）:
 
 ```python
 from sklearn.linear_model import LogisticRegression
@@ -55,6 +58,6 @@ def smd(x, t, w):  # 重み付き標準化平均差（love plot 用。w=1 で調
   X = df[["age", "income", "visits_after_treatment"]]
   ```
 - PS モデルを予測モデルとして最適化して AUC を上げるとオーバーラップが消える。PS の目的はバランス
-- `train_test_split` で「テスト」しようとしない（予測タスクではない）
+- 予測精度を測るための `train_test_split` は要らない（予測タスクではない）。ただし DML の cross-fitting は推定量の一部なので必須。この 2 つを混同しない
 - ATE と ATT を混同しない。トリミング後の母集団が推定対象であることを報告する
 - 観察データの結論には必ず「（無交絡などの）仮定の下で」を付ける
