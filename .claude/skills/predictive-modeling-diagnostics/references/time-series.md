@@ -38,7 +38,7 @@ n_missing = full["y"].null_count()  # 欠けていた期の数（値を埋める
      - **季節で折り返す**: 年ごとに線を重ねる、または `month_plot` / `quarter_plot` で期ごとのサブ系列にする（周期と季節パターンの変化はこちらが速い）
    - 粗い粒度に集計するときは平均だけにせず **min–max を帯で添える**（`resample("W").agg(["mean", "min", "max"])`）。平均だけだとスパイクと外れ値が消える
    - **平滑化した図だけを載せない**。外れ値・レベルシフト・欠測はこの図の主目的で、移動平均をかけると真っ先に消える。移動平均は両端が欠けることにも注意
-2. コレログラム（ACF / PACF。ラグは季節周期の 3 倍以上、月次なら 36。有意帯を描く。差分後も併せて） — **周期性の確認が目的**。季節ラグにスパイクがあれば周期を読み取る
+2. コレログラム（ACF / PACF。ラグは季節周期の 3 倍以上、月次なら 36。ただし `lags < n`（系列長。`lags = n` は ValueError で落ちる）。3 周期に満たない短い系列では 2 周期までに留め、周期の判断が弱いと書く。有意帯を描く。差分後も併せて） — **周期性の確認が目的**。季節ラグにスパイクがあれば周期を読み取る
 3. STL 分解（trend / seasonal / resid） — 季節成分の大きさと形が読めること。resid に構造が残らなければ合格
 4. 残差の診断（残差プロット + 残差 ACF + Q-Q） — 残差 ACF が有意帯内なら合格
 5. **予測する場合: 実測と予測を同じ時間軸に並べた図（この図なしに予測結果を報告しない）**
@@ -75,8 +75,9 @@ from statsmodels.stats.diagnostic import acorr_ljungbox
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 y = y.asfreq("MS")  # 頻度を明示（欠測は NaN として顕在化し、予測結果にも時点ラベルが付く）
-adf_p, kpss_p = adfuller(y)[1], kpss(y, regression="c", nlags="auto")[1]  # KPSS p は表の範囲で切り詰め
-stl = STL(y, period=12).fit()  # trend / seasonal / resid
+y_f = y.interpolate(limit_area="inside")  # adfuller / kpss は NaN を受け付けない。補間したことを報告する（落とすと等間隔が崩れる）
+adf_p, kpss_p = adfuller(y_f)[1], kpss(y_f, regression="c", nlags="auto")[1]  # KPSS p は表の範囲で切り詰め
+stl = STL(y, period=12).fit()  # STL と SARIMAX は欠測を許容するので原系列のまま渡す
 res = SARIMAX(y_train, order=(1, 1, 1), seasonal_order=(0, 1, 1, 12)).fit(disp=0)
 lb = acorr_ljungbox(res.resid[13:], lags=[12, 24, 36], model_df=3)  # model_df = p+q+P+Q = 1+1+0+1、先頭は d+D*s 分を捨てる
 
@@ -110,5 +111,6 @@ ax.legend()
 - ベースライン（naive・季節 naive）比較なしに MAE / RMSE を報告しない。季節 naive に負ける複雑モデルは珍しくない
 - コレログラムを見ずに季節周期を決め打ちしない。KPSS の p 値は表の範囲で切り詰められる（`p > 0.1` のように報告）
 - Prophet のデフォルト予測区間はトレンドの不確実性と観測ノイズしか含まず、季節性の不確実性は入らない（入れるには `mcmc_samples > 0` で完全ベイズ推定）。狭く出やすいので、必ず実測カバレッジで確かめる
+- 欠測への耐性はライブラリで揃っていない。`STL` と `SARIMAX` は NaN を含む系列をそのまま扱えるが、`adfuller` は `MissingDataError`、`kpss` は「cannot convert float NaN to integer」という原因の読めない例外で落ちる。検定に渡す前に欠測の扱いを決める
 - 対数変換して予測したら逆変換時のバイアス（単純な exp は中央値予測）に言及する
 - 外生変数は「予測時点で入手可能か」を確認する（実績気温は使えない。予報なら可）。これもリーク
