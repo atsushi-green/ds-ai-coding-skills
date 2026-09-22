@@ -204,7 +204,7 @@
       </article>
 
       <!-- 02 GLM -->
-      <article class="method" id="m-glm" data-method data-verdicts="ok check">
+      <article class="method" id="m-glm" data-method data-verdicts="ok check act">
         <div class="method__head">
           <div class="method__titleline">
             <span class="method__num">02</span>
@@ -214,9 +214,9 @@
           <div class="method__meta">
             <dl>
               <dt>題材</dt>
-              <dd><code>Survived ~ 客室クラス + 性別 + 年齢 + SibSp + Parch + 乗船港</code>（n = 712、学習データ上）</dd>
+              <dd><code>Survived ~ 客室クラス + 性別 + 年齢 + SibSp + Parch + 乗船港</code>（n = 712、陽性 288 件、性能指標は 5-fold out-of-fold）</dd>
               <dt>判定</dt>
-              <dd><span class="badge badge--ok">OK 4</span> <span class="badge badge--check">確認 3</span></dd>
+              <dd><span class="badge badge--ok">OK 6</span> <span class="badge badge--check">確認 2</span> <span class="badge badge--act">要対処 1</span></dd>
             </dl>
           </div>
         </div>
@@ -224,24 +224,26 @@
           <figure class="fig">
             <a class="fig__frame" data-figure href="figures/glm/glm_logit_diagnostics.webp"
                data-caption="ロジスティック回帰の診断 4 パネル（n=712）">
-              <img src="figures/glm/glm_logit_diagnostics.webp" width="2117" height="1817" loading="lazy" decoding="async"
-                   alt="ロジスティック回帰の診断 4 パネル。ROC 曲線、PR 曲線、十分位のキャリブレーションプロット、deviance 残差 vs 線形予測子">
+              <img src="figures/glm/glm_logit_diagnostics.webp" width="2214" height="1817" loading="lazy" decoding="async"
+                   alt="ロジスティック回帰の診断 4 パネル。ROC 曲線、PR 曲線、十分位のキャリブレーションプロット、binned residual plot">
             </a>
             <figcaption>
               <span class="fig__file">glm_logit_diagnostics.png</span>
-              ROC（AUC に陽性率を併記）、PR（ベースライン = 陽性率の破線）、キャリブレーション（十分位ビン）、deviance 残差 vs 線形予測子。
+              ROC（AUC に陽性率を併記）、PR（ベースライン = 陽性率の破線）、キャリブレーション（十分位ビン）、binned residual plot（±2SE バンド付き）。性能指標は 5-fold の out-of-fold 予測に対して計算しています。
             </figcaption>
           </figure>
           <div class="note note--quiet">
-            <p>二値では deviance 残差が 2 本の帯に割れます。現在の <code>glm.md</code> はこの用途に binned residual plot を求めており、この図はその改訂前の出力です。</p>
+            <p>二値では deviance 残差が y = 0/1 のため 2 本の帯に割れ、無構造かどうかを目視判定できません。<code>glm.md</code> は二値の残差診断に binned residual plot を求めています。</p>
           </div>
           <div class="verdicts">
             <p class="verdicts__title">診断サマリーから</p>
             <ul>
-              <li><span class="badge badge--ok">OK</span><span>AUC 0.860（陽性率 40.4%、PR-AUC 0.836）</span></li>
-              <li><span class="badge badge--ok">OK</span><span>Brier 0.141（ベースライン 0.241）、係数 |max| 2.64・SE max 0.56 で完全分離なし</span></li>
-              <li><span class="badge badge--check">確認</span><span>キャリブレーションの最大乖離 0.111<span class="v-next">確率を使うなら学習外データで較正</span></span></li>
-              <li><span class="badge badge--check">確認</span><span>閾値 0.5 で TN 364 / FP 60 / FN 81 / TP 207<span class="v-next">コストから閾値を選び直す</span></span></li>
+              <li><span class="badge badge--ok">OK</span><span>AUC 0.851（陽性率 40.4%、n = 712、陽性 288 件、PR-AUC 0.825。5-fold out-of-fold）</span></li>
+              <li><span class="badge badge--ok">OK</span><span>Brier 0.145（ベースライン 0.241）、係数 |max| 2.64・SE max 0.56 で完全分離なし</span></li>
+              <li><span class="badge badge--ok">OK</span><span>EPV 36.0（陽性 288 件 / 説明変数 8）、VIF max 1.97（Pclass_3）</span></li>
+              <li><span class="badge badge--act">要対処</span><span>binned residual が ±2SE バンド外 2/20 ビン（10%、基準 5% 程度）。低確率側で過小予測の系統的な弧<span class="v-next">年齢の非線形項や性別×客室クラスの交互作用を試す</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>キャリブレーションの最大乖離 0.126<span class="v-next">確率を使うなら学習外データで較正</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>閾値 0.5 で TN 363 / FP 61 / FN 82 / TP 206<span class="v-next">コストから閾値を選び直す</span></span></li>
             </ul>
           </div>
         </div>
