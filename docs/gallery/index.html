@@ -947,37 +947,38 @@
         <div class="method__head">
           <div class="method__titleline">
             <span class="method__num">13</span>
-            <h3>クラスタリング（k-means・Ward）</h3>
+            <h3>クラスタリング（k-means）</h3>
             <code class="method__ref">references/clustering.md</code>
           </div>
           <div class="method__meta">
             <dl>
               <dt>題材</dt>
-              <dd>年齢・log1p(運賃)・log1p(SibSp)・log1p(Parch) を標準化して k-means と Ward 法（n = 714、p = 4）</dd>
+              <dd>年齢・log1p(運賃)・log1p(SibSp)・log1p(Parch) を標準化して k-means（n = 714、p = 4）</dd>
               <dt>判定</dt>
-              <dd><span class="badge badge--ok">OK 7</span> <span class="badge badge--check">確認 1</span></dd>
+              <dd><span class="badge badge--ok">OK 6</span> <span class="badge badge--check">確認 1</span></dd>
             </dl>
           </div>
         </div>
         <div class="method__body">
           <figure class="fig">
             <a class="fig__frame" data-figure href="figures/cluster/cluster_diagnostics.webp"
-               data-caption="クラスタリングの診断 6 パネル">
-              <img src="figures/cluster/cluster_diagnostics.webp" width="3466" height="2042" loading="lazy" decoding="async"
-                   alt="クラスタリングの診断 6 パネル。エルボーとシルエットと帰無ベースラインの帯、シルエットプロット、PCA 射影、標準化セントロイドのヒートマップ、デンドログラム、外部変数プロファイル">
+               data-caption="クラスタリングの診断 5 パネル">
+              <img src="figures/cluster/cluster_diagnostics.webp" width="3167" height="1892" loading="lazy" decoding="async"
+                   alt="クラスタリングの診断 5 パネル。エルボーとシルエット平均と帰無ベースラインの帯、シルエットプロット、PCA 射影、標準化セントロイドのヒートマップ、外部変数プロファイル">
             </a>
             <figcaption>
               <span class="fig__file">cluster_diagnostics.png</span>
-              エルボー + シルエット + 帰無ベースライン（列ごと順列 20 本の 5〜95% を灰色の帯で重ねたもの）、シルエットプロット、
-              PCA 2 次元射影、標準化セントロイド、デンドログラム、クラスタリングに使っていない変数でのプロファイル。
+              手法によらず出す 4 パネル（シルエットプロット、PCA 2 次元射影、標準化セントロイド、クラスタリングに使っていない変数でのプロファイル）に、
+              使った手法の k の根拠を 1 枚足した構成。k-means ではエルボー（inertia）とシルエット平均の走査で、列ごと順列 20 本の帰無ベースライン
+              （5〜95% を灰色の帯）と比べる。デンドログラムは階層クラスタリングを使ったときだけ足す。
             </figcaption>
           </figure>
           <div class="verdicts">
             <p class="verdicts__title">診断サマリーから</p>
             <ul>
               <li><span class="badge badge--ok">OK</span><span>シルエット平均 0.42（k = 9）に対し帰無 95% = 0.31</span></li>
-              <li><span class="badge badge--ok">OK</span><span>安定性 ARI: seed 5 本 0.96 / 80% サブサンプル 0.93 / Ward との一致 0.80</span></li>
-              <li><span class="badge badge--ok">OK</span><span>各クラスタの n は 5.3%〜36%、cophenetic 相関 0.70、n_init = 20</span></li>
+              <li><span class="badge badge--ok">OK</span><span>安定性 ARI: seed 5 本 0.96 / 80% サブサンプル 0.93</span></li>
+              <li><span class="badge badge--ok">OK</span><span>各クラスタの n は 5.3%〜36%、n_init = 20、seed 固定</span></li>
               <li><span class="badge badge--check">確認</span><span>帰無との差が k によらずほぼ一定（0.106〜0.107）<span class="v-next">GMM の BIC でも比較し、運用可能な数から人が決める</span></span></li>
             </ul>
           </div>
