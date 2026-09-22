@@ -93,6 +93,7 @@ Do **not** repeat `fontsize=` on every call — it is redundant when `font_scale
 ## Saving
 
 - Save final figures under `outputs/figures/`.
+- Diagnostic figures produced by a `*-diagnostics` skill go under `outputs/diagnostics/<YYYYMMDD-HHMM>_<skill>/` instead (gitignored; the report links the directory and shows only the 判定表).
 - Use the path utilities from `src/analysis_project/paths.py`.
 
 ```python
