@@ -13,7 +13,7 @@ ${input:dataset_path:Path to the input dataset}
 Topic:
 ${input:topic:Short description of the analysis topic}
 
-`AGENTS.md`、`.claude/skills/` 配下の関連スキル、`docs/agent/*` に従って以下を実施する。
+`AGENTS.md`、`.claude/skills/` 配下の関連スキル、`docs/agent/`（プロジェクト概要・データカタログ・指標定義）に従って以下を実施する。
 
 1. 元データを不変の入力として読み込む。
 2. 再利用可能なEDAコードを `src/analysis_project/` 配下に作成する。

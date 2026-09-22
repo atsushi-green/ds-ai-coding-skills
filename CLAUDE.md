@@ -105,18 +105,15 @@ uv run python scripts/check_no_sensitive_patterns.py
 
 ## Project Context (docs/agent)
 
+このリポジトリでしか通用しない知識だけを置く。作業手順・規約は skill 側が正本であり、
+ここには重複させない（持ち運ぶ単位は `.claude/skills/<name>/` ディレクトリ）。
+ディレクトリ構成は `README.md` を参照する。
+
 | Document | Purpose |
 |----------|---------|
 | [project-overview.md](docs/agent/project-overview.md) | プロジェクトの目的とスコープ |
-| [repository-structure.md](docs/agent/repository-structure.md) | ディレクトリ構成 |
 | [data-catalog.md](docs/agent/data-catalog.md) | データセット一覧と定義 |
 | [metrics-and-definitions.md](docs/agent/metrics-and-definitions.md) | 指標定義 |
-| [analysis-workflow.md](docs/agent/analysis-workflow.md) | 分析ワークフロー |
-| [statistical-and-ml-guidelines.md](docs/agent/statistical-and-ml-guidelines.md) | 統計・MLガイドライン |
-| [validation-and-testing.md](docs/agent/validation-and-testing.md) | テスト・検証方針 |
-| [reporting-guidelines.md](docs/agent/reporting-guidelines.md) | 報告テンプレート |
-| [security-and-privacy.md](docs/agent/security-and-privacy.md) | セキュリティ・プライバシー |
-| [agent-behavior.md](docs/agent/agent-behavior.md) | エージェント行動指針 |
 | [diagnostics-reference-template.md](docs/agent/diagnostics-reference-template.md) | 診断 skill（*-diagnostics）への手法追加手順と雛形 |
 
 ## Skills

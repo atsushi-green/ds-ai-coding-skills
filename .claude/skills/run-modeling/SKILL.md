@@ -14,7 +14,7 @@ disable-model-invocation: true
 - **目的変数**（例: `Survived`）
 - **予測タスク**（簡単な説明。例: 「乗客の生存を予測する二値分類」）
 
-`CLAUDE.md`、`.claude/skills/` 配下の関連スキル、`docs/agent/*` に従って以下を実施する。
+`CLAUDE.md`、`.claude/skills/` 配下の関連スキル、`docs/agent/`（プロジェクト概要・データカタログ・指標定義）に従って以下を実施する。
 
 1. 特徴量エンジニアリングのコードを `src/analysis_project/` 配下に作成する。
 2. モデリングのコードを `src/analysis_project/` 配下に作成する。

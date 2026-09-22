@@ -19,6 +19,9 @@ Use this skill when summarizing analysis results, experiment outcomes, or model 
 4. **解釈** — Provide interpretations and implications.
 5. **制約・注意点** — Mention limitations, caveats, and possible bias.
 
+A fill-in-the-blank report skeleton with all of the above, plus the reproducibility
+section, is in [references/report-template.md](.claude/skills/analysis-reporting/references/report-template.md).
+
 ## Diagnostics Summary（診断サマリー）
 
 When any statistical / ML / causal / simulation / optimization method was applied, add a **診断サマリー**
