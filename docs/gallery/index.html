@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ja" >
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>診断図ギャラリー | ds-ai-coding-skills</title>
+<meta name="description" content="*-diagnostics skills が「必ず出す」と定めた診断図を、実データで出力したギャラリー。5 スキル・17 手法・45 図。">
+<meta property="og:title" content="診断図ギャラリー | ds-ai-coding-skills">
+<meta property="og:description" content="*-diagnostics skills が「必ず出す」と定めた診断図を、実データで出力したギャラリー。">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23F26649'/%3E%3Ccircle cx='21' cy='11' r='4' fill='white'/%3E%3Cpath d='M6 25 L12 16 L17 21 L26 9' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+  /* 描画前にテーマを当てて、ダーク指定時の白い一瞬を防ぐ */
+  (function () {
+    try {
+      var saved = localStorage.getItem("gallery-theme");
+      if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+    } catch (e) { /* localStorage が使えなくても OS 設定で描画される */ }
+  })();
+</script>
+</head>
+<body>
+<a class="skip" href="#main">本文へスキップ</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="btn btn--icon nav-toggle" data-nav-toggle aria-expanded="false" aria-label="目次を開く">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 3h14M1 8h14M1 13h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+    </button>
+    <a class="brandmark" href="#top">
+      <span class="brandmark__dot" aria-hidden="true"></span>
+      <span class="brandmark__text">診断図ギャラリー <span>/ ds-ai-coding-skills</span></span>
+    </a>
+    <span class="topbar__spacer"></span>
+    <a class="btn" href="https://github.com/atsushi-green/ds-ai-coding-skills" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+    <button class="btn btn--icon" data-theme-toggle aria-label="ダークテーマに切り替える">
+      <span data-theme-icon aria-hidden="true">☾</span>
+    </button>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <div class="hero__inner">
+    <span class="eyebrow">ds-ai-coding-skills</span>
+    <h1>診断図ギャラリー</h1>
+    <p class="hero__lead">
+      <code>*-diagnostics</code> skills が手法ごとに「必ず出す図」と定めているものを、実データで出力して並べました。
+      スキル別・手法別に 45 図。図をクリックすると拡大します。
+    </p>
+    <ul class="stats">
+      <li class="stat"><div class="stat__num">5</div><div class="stat__label">スキル</div></li>
+      <li class="stat"><div class="stat__num">17</div><div class="stat__label">手法</div></li>
+      <li class="stat"><div class="stat__num">45</div><div class="stat__label">診断図</div></li>
+      <li class="stat"><div class="stat__num">142</div><div class="stat__label">診断項目</div></li>
+    </ul>
+  </div>
+</section>
+
+<div class="scrim" data-scrim></div>
+
+<div class="layout">
+  <aside class="sidebar" data-sidebar>
+    <nav class="sidebar__inner" aria-label="目次">
+      <p class="sidebar__title">目次</p>
+      <ul class="toc">
+        <li><a href="#about">はじめに</a></li>
+
+        <li class="toc__group">
+          <a href="#s1"><span class="toc__num">①</span>統計的推論</a>
+          <ul class="toc__sub">
+            <li><a href="#m-ols">01 線形回帰（OLS）</a></li>
+            <li><a href="#m-glm">02 ロジスティック回帰・GLM</a></li>
+            <li><a href="#m-mixed">03 混合効果モデル</a></li>
+            <li><a href="#m-htest">04 群間比較・仮説検定</a></li>
+            <li><a href="#m-surv">05 生存時間分析</a></li>
+            <li><a href="#m-mcmc">06 ベイズ推定・MCMC</a></li>
+          </ul>
+        </li>
+
+        <li class="toc__group">
+          <a href="#s2"><span class="toc__num">②</span>予測モデリング</a>
+          <ul class="toc__sub">
+            <li><a href="#m-mleval">07 評価手続き・リーク</a></li>
+            <li><a href="#m-tree">08 木系モデル</a></li>
+            <li><a href="#m-interp">09 モデル解釈</a></li>
+          </ul>
+        </li>
+
+        <li class="toc__group">
+          <a href="#s3"><span class="toc__num">③</span>因果推論</a>
+          <ul class="toc__sub">
+            <li><a href="#m-causal-obs">10 傾向スコア・IPW</a></li>
+            <li><a href="#m-causal-qe">11 回帰不連続（RDD）</a></li>
+          </ul>
+        </li>
+
+        <li class="toc__group">
+          <a href="#s4"><span class="toc__num">④</span>教師なし・EDA</a>
+          <ul class="toc__sub">
+            <li><a href="#m-missing">12 欠測・外れ値</a></li>
+            <li><a href="#m-cluster">13 クラスタリング</a></li>
+            <li><a href="#m-dimred">14 次元削減</a></li>
+            <li><a href="#m-anomaly">15 異常検知</a></li>
+          </ul>
+        </li>
+
+        <li class="toc__group">
+          <a href="#s5"><span class="toc__num">⑤</span>シミュレーション・最適化</a>
+          <ul class="toc__sub">
+            <li><a href="#m-sim">16 モンテカルロ</a></li>
+            <li><a href="#m-opt">17 数理最適化（MIP）</a></li>
+          </ul>
+        </li>
+
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="main" id="main">
+
+    <section id="about" class="section-intro prose">
+      <h2>はじめに</h2>
+      <div class="note">
+        <p class="note__title">このギャラリーについて</p>
+        <p>
+          掲載している図・コード・文章は、すべて AI（Claude Code）が <code>*-diagnostics</code> skills に従って生成したものです。
+          人手による内容の検証は行っていません。診断図の雰囲気と情報量を眺めるためのもので、
+          個々の数値や判定の正しさを保証するものではありません。
+        </p>
+      </div>
+      <ul>
+        <li>題材は Titanic の <code>train.csv</code>（891 人）。生存時間分析のみ lifelines 同梱の Rossi 再犯データです。スキルの動作を示すデモで、データについての結論を出すものではありません。</li>
+        <li>図は出力そのままです。基準を満たしている図も、前提が崩れている図も同じように並べています。</li>
+        <li>各手法には診断サマリー（診断項目 / 実測値 / 合格基準 / 判定 / 次アクション）があり、ここにはそこから数項目を抜粋しています。</li>
+      </ul>
+      <ul class="legend">
+        <li class="legend__item"><span class="badge badge--ok">OK</span><p>合格基準を満たしている。</p></li>
+        <li class="legend__item"><span class="badge badge--check">確認</span><p>人の判断が要る項目。</p></li>
+        <li class="legend__item"><span class="badge badge--act">要対処</span><p>基準を外れている。次アクションがつく。</p></li>
+      </ul>
+      <div class="filterbar">
+        <span class="filterbar__label">絞り込み</span>
+        <button class="chip" data-filter="all" aria-pressed="true">すべて表示</button>
+        <button class="chip" data-filter="act" aria-pressed="false">要対処を含む手法</button>
+        <span class="filterbar__count" data-filter-count></span>
+      </div>
+    </section>
+
+    <!-- ===================================================== 統計的推論 === -->
+    <section class="skill" id="s1" data-skill>
+      <div class="skill__head">
+        <div class="skill__num">①</div>
+        <div class="skill__titles">
+          <h2>統計的推論</h2>
+          <code class="skill__slug">statistical-inference-diagnostics</code>
+        </div>
+      </div>
+      <p class="skill__desc">回帰・検定・生存時間・ベイズ。全 6 手法。</p>
+
+      <!-- 01 OLS -->
+      <article class="method" id="m-ols" data-method data-verdicts="ok check act">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">01</span>
+            <h3>線形回帰（OLS）</h3>
+            <code class="method__ref">references/ols.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd><code>log1p(運賃) ~ 客室クラス + 性別 + 年齢 + SibSp + Parch + 乗船港 + TicketSize</code>（n = 712）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 2</span> <span class="badge badge--check">確認 3</span> <span class="badge badge--act">要対処 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/ols/ols_residuals.webp"
+               data-caption="線形回帰の残差 4 点セット（n=712）">
+              <img src="figures/ols/ols_residuals.webp" width="2267" height="1817" loading="lazy" decoding="async"
+                   alt="線形回帰の残差 4 点セット。残差 vs 予測値と LOWESS 線、Q-Q プロット、Scale-Location、レバレッジ vs 標準化残差">
+            </a>
+            <figcaption>
+              <span class="fig__file">ols_residuals.png</span>
+              残差 4 点セット。残差 vs 予測値（LOWESS 付き）、Q-Q、Scale-Location、レバレッジ vs 標準化残差（点サイズ = Cook's D、4/n に等高線）。
+              各パネルの小見出しに合格の読み方が入っています。Cook's D が 4/n を超えた 37 件は赤で、とくに外れた点には行 ID が付きます。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--act">要対処</span><span>Breusch-Pagan p = 9.6e-05（基準 &gt; 0.05）<span class="v-next">HC3 ロバスト SE で再推定</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>Cook's D &gt; 4/n が 37 件<span class="v-next">該当行の実データを見て判断</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>Shapiro-Wilk p = 1.0e-31<span class="v-next">n = 712 なので中心極限定理で緩和できる</span></span></li>
+              <li><span class="badge badge--ok">OK</span><span>VIF 最大 2.28、Durbin-Watson 2.08</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 02 GLM -->
+      <article class="method" id="m-glm" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">02</span>
+            <h3>ロジスティック回帰・GLM</h3>
+            <code class="method__ref">references/glm.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd><code>Survived ~ 客室クラス + 性別 + 年齢 + SibSp + Parch + 乗船港</code>（n = 712、学習データ上）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 4</span> <span class="badge badge--check">確認 3</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/glm/glm_logit_diagnostics.webp"
+               data-caption="ロジスティック回帰の診断 4 パネル（n=712）">
+              <img src="figures/glm/glm_logit_diagnostics.webp" width="2117" height="1817" loading="lazy" decoding="async"
+                   alt="ロジスティック回帰の診断 4 パネル。ROC 曲線、PR 曲線、十分位のキャリブレーションプロット、deviance 残差 vs 線形予測子">
+            </a>
+            <figcaption>
+              <span class="fig__file">glm_logit_diagnostics.png</span>
+              ROC（AUC に陽性率を併記）、PR（ベースライン = 陽性率の破線）、キャリブレーション（十分位ビン）、deviance 残差 vs 線形予測子。
+            </figcaption>
+          </figure>
+          <div class="note note--quiet">
+            <p>二値では deviance 残差が 2 本の帯に割れます。現在の <code>glm.md</code> はこの用途に binned residual plot を求めており、この図はその改訂前の出力です。</p>
+          </div>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>AUC 0.860（陽性率 40.4%、PR-AUC 0.836）</span></li>
+              <li><span class="badge badge--ok">OK</span><span>Brier 0.141（ベースライン 0.241）、係数 |max| 2.64・SE max 0.56 で完全分離なし</span></li>
+              <li><span class="badge badge--check">確認</span><span>キャリブレーションの最大乖離 0.111<span class="v-next">確率を使うなら学習外データで較正</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>閾値 0.5 で TN 364 / FP 60 / FN 81 / TP 207<span class="v-next">コストから閾値を選び直す</span></span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 03 混合効果 -->
+      <article class="method" id="m-mixed" data-method data-verdicts="ok check act">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">03</span>
+            <h3>混合効果モデル</h3>
+            <code class="method__ref">references/mixed-effects.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd><code>Survived ~ male + C(Pclass) + child + (1 | Ticket)</code>（n = 891、681 群。同じチケット番号＝同行グループ）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 5</span> <span class="badge badge--check">確認 2</span> <span class="badge badge--act">要対処 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/mixed/mixed_diagnostics.webp"
+               data-caption="混合効果モデルの診断 6 パネル（n=891、681 群）">
+              <img src="figures/mixed/mixed_diagnostics.webp" width="3467" height="2042" loading="lazy" decoding="async"
+                   alt="混合効果モデルの診断 6 パネル。群別の生死と年齢、条件付き残差、残差 Q-Q、BLUP の Q-Q、固定効果のフォレストプロット、群サイズ分布">
+            </a>
+            <figcaption>
+              <span class="fig__file">mixed_diagnostics.png</span>
+              群別の生死 × 年齢（1 列 = 1 群）、条件付き残差、残差 Q-Q、ランダム効果（BLUP）の Q-Q、固定効果のフォレスト、群サイズ分布。
+              フォレストには単純 OLS とクラスタ頑健 SE の係数も並びます。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--act">要対処</span><span>二値の目的変数を線形混合効果で近似している<span class="v-next">ロジットの GLMM で再推定</span></span></li>
+              <li><span class="badge badge--ok">OK</span><span>ICC = 0.44（基準 &gt; 0.05〜0.1）</span></li>
+              <li><span class="badge badge--check">確認</span><span>群あたり中央値 1 人、1 人だけの群が 80.3%<span class="v-next">ランダム傾きは置かない</span></span></li>
+              <li><span class="badge badge--ok">OK</span><span>収束 True・警告なし、ランダム効果分散 0.0635、群数 681</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 04 仮説検定 -->
+      <article class="method" id="m-htest" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">04</span>
+            <h3>群間比較・仮説検定</h3>
+            <code class="method__ref">references/hypothesis-test.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>生存者 vs 死亡者の属性比較（生存 342 / 死亡 549）。検定は行わず推定で答えた例</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 6</span> <span class="badge badge--check">確認 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/htest/htest_group_comparison.webp"
+               data-caption="生存者 vs 死亡者の群間比較">
+              <img src="figures/htest/htest_group_comparison.webp" width="3317" height="1142" loading="lazy" decoding="async"
+                   alt="生存者と死亡者の年齢・運賃の箱ひげ図と個票のストリッププロット、および効果量のフォレストプロット">
+            </a>
+            <figcaption>
+              <span class="fig__file">htest_group_comparison.png</span>
+              年齢と運賃の群別分布（箱ひげ + 個票）と、効果量 Cohen's d のフォレスト。縦破線は仮置きの最小重要差 |d| = 0.2。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>差の点推定 + 95% CI: 年齢 −2.28 歳 [−4.47, −0.09]、log1p(運賃) +0.66 [0.53, 0.78]</span></li>
+              <li><span class="badge badge--ok">OK</span><span>効果量 + CI: 最大は運賃 d = +0.72 [0.57, 0.87]。他は小さい効果の範囲</span></li>
+              <li><span class="badge badge--ok">OK</span><span>p 値は出していない。等分散検定で手法を選ばず最初から Welch</span></li>
+              <li><span class="badge badge--check">確認</span><span>最小重要差（MID）が未定義<span class="v-next">意思決定に使うならドメイン側で定義</span></span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 05 生存時間分析 -->
+      <article class="method" id="m-surv" data-method data-verdicts="ok check act">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">05</span>
+            <h3>生存時間分析（Kaplan-Meier・Cox）</h3>
+            <code class="method__ref">references/survival.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>出所後の再逮捕までの時間（Rossi 再犯データ、n = 432、イベント 114 件、追跡 52 週）。群比較は経済的支援の有無 <code>fin</code></dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 5</span> <span class="badge badge--check">確認 3</span> <span class="badge badge--act">要対処 3</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/surv/surv_km_by_fin.webp"
+               data-caption="Kaplan-Meier 曲線（経済的支援の有無別、n=432）">
+              <img src="figures/surv/surv_km_by_fin.webp" width="1299" height="1291" loading="lazy" decoding="async"
+                   alt="経済的支援の有無別の Kaplan-Meier 曲線。95% 信頼区間の帯、打ち切りマーク、下部に at-risk テーブル">
+            </a>
+            <figcaption>
+              <span class="fig__file">surv_km_by_fin.png</span>
+              KM 曲線。95% CI・打ち切りマーク・at-risk テーブルがセットです。
+            </figcaption>
+          </figure>
+
+          <div class="fig-grid fig-grid--2">
+            <figure class="fig">
+              <a class="fig__frame" data-figure href="figures/surv/surv_loglog_by_fin.webp"
+                 data-caption="log(-log S(t)) vs log(t)（経済的支援の有無別）">
+                <img src="figures/surv/surv_loglog_by_fin.webp" width="1217" height="917" loading="lazy" decoding="async"
+                     alt="log マイナス log 生存関数と log 時間のプロット。2 本の曲線が概ね平行">
+              </a>
+              <figcaption>
+                <span class="fig__file">surv_loglog_by_fin.png</span>
+                log(-log S(t)) vs log(t)。2 本が平行なら比例ハザード性を支持。ここでは交差なし。
+              </figcaption>
+            </figure>
+            <figure class="fig">
+              <a class="fig__frame" data-figure href="figures/surv/surv_cox_forest.webp"
+                 data-caption="Cox 回帰のハザード比と 95% CI のフォレストプロット">
+                <img src="figures/surv/surv_cox_forest.webp" width="1367" height="842" loading="lazy" decoding="async"
+                     alt="Cox 回帰の共変量ごとのハザード比と 95% 信頼区間のフォレストプロット。HR = 1 に縦破線">
+              </a>
+              <figcaption>
+                <span class="fig__file">surv_cox_forest.png</span>
+                HR と 95% CI のフォレスト。縦破線は HR = 1。
+              </figcaption>
+            </figure>
+          </div>
+
+          <div class="stage">
+            <p class="stage__label"><span>7 変数</span>Schoenfeld 残差（共変量ごとに個別保存）</p>
+            <p class="stage__note">LOWESS が水平なら比例ハザード性を支持。<code>age</code> は右下がり、<code>wexp</code> は右上がり。</p>
+            <div class="fig-grid fig-grid--3">
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/surv/surv_schoenfeld_age.webp" data-caption="Schoenfeld 残差: age — p = 0.0007">
+                  <img src="figures/surv/surv_schoenfeld_age.webp" width="930" height="701" loading="lazy" decoding="async" alt="age の Schoenfeld 残差プロット。LOWESS 曲線が右下がり">
+                </a>
+                <figcaption><span class="fig__file">age</span>p = 0.0007 — 右下がり</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/surv/surv_schoenfeld_wexp.webp" data-caption="Schoenfeld 残差: wexp — p = 0.0068">
+                  <img src="figures/surv/surv_schoenfeld_wexp.webp" width="930" height="701" loading="lazy" decoding="async" alt="wexp の Schoenfeld 残差プロット。LOWESS 曲線が右上がり">
+                </a>
+                <figcaption><span class="fig__file">wexp</span>p = 0.0068 — 右上がり</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/surv/surv_schoenfeld_fin.webp" data-caption="Schoenfeld 残差: fin — p = 0.902">
+                  <img src="figures/surv/surv_schoenfeld_fin.webp" width="930" height="701" loading="lazy" decoding="async" alt="fin の Schoenfeld 残差プロット。LOWESS はほぼ水平">
+                </a>
+                <figcaption><span class="fig__file">fin</span>p = 0.902</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/surv/surv_schoenfeld_prio.webp" data-caption="Schoenfeld 残差: prio — p = 0.891">
+                  <img src="figures/surv/surv_schoenfeld_prio.webp" width="931" height="701" loading="lazy" decoding="async" alt="prio の Schoenfeld 残差プロット。LOWESS はほぼ水平">
+                </a>
+                <figcaption><span class="fig__file">prio</span>p = 0.891</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/surv/surv_schoenfeld_race.webp" data-caption="Schoenfeld 残差: race — p = 0.232">
+                  <img src="figures/surv/surv_schoenfeld_race.webp" width="930" height="701" loading="lazy" decoding="async" alt="race の Schoenfeld 残差プロット。LOWESS はほぼ水平">
+                </a>
+                <figcaption><span class="fig__file">race</span>p = 0.232</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/surv/surv_schoenfeld_mar.webp" data-caption="Schoenfeld 残差: mar — p = 0.400">
+                  <img src="figures/surv/surv_schoenfeld_mar.webp" width="930" height="701" loading="lazy" decoding="async" alt="mar の Schoenfeld 残差プロット。LOWESS はほぼ水平">
+                </a>
+                <figcaption><span class="fig__file">mar</span>p = 0.400</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/surv/surv_schoenfeld_paro.webp" data-caption="Schoenfeld 残差: paro — p = 0.714">
+                  <img src="figures/surv/surv_schoenfeld_paro.webp" width="930" height="701" loading="lazy" decoding="async" alt="paro の Schoenfeld 残差プロット。LOWESS はほぼ水平">
+                </a>
+                <figcaption><span class="fig__file">paro</span>p = 0.714</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--act">要対処</span><span>Schoenfeld: age p = 0.0007、wexp p = 0.0068、全体 χ² = 17.95 (df 7, p = 0.012)<span class="v-next">この 2 変数を層別化して再当てはめ</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>ログランク p = 0.0501<span class="v-next">境界なので p で白黒つけず HR と CI で報告</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>HR(fin) = 0.684 [0.470, 0.996]、C-index 0.640（学習データ上）</span></li>
+              <li><span class="badge badge--ok">OK</span><span>打ち切り 73.6%（全員が研究終了）、イベント数 / 共変量数 = 16.3</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 06 MCMC -->
+      <article class="method" id="m-mcmc" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">06</span>
+            <h3>ベイズ推定・MCMC</h3>
+            <code class="method__ref">references/bayesian-mcmc.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>乗船港ごとの切片をもつ階層ロジスティック回帰（部分プーリング、J = 3、n = 712、CmdStan）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 8</span> <span class="badge badge--check">確認 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <p>
+            収束が基準を満たすまで事後分布を報告しないスキルなので、対処順（非中心化 → 事前分布を絞る → adapt_delta を上げる）を
+            1 段ずつ実行した 4 段ぶんの図が残っています。
+          </p>
+
+          <div class="stage">
+            <p class="stage__label"><span>① 中心化</span>R-hat 1.035 / ESS bulk 161 / 発散 213</p>
+            <div class="fig-grid fig-grid--2">
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_1_centered_trace.webp" data-caption="① 中心化: トレースプロット">
+                  <img src="figures/mcmc/mcmc_1_centered_trace.webp" width="1521" height="1029" loading="lazy" decoding="async" alt="中心化パラメータ化でのトレースプロット。チェーンが重ならず張り付きが見える">
+                </a>
+                <figcaption><span class="fig__file">mcmc_1_centered_trace.png</span>トレース。全 chain が毛虫状に重なれば合格。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_1_centered_pair.webp" data-caption="① 中心化: tau vs a のペアプロット（橙 = divergent）">
+                  <img src="figures/mcmc/mcmc_1_centered_pair.webp" width="2348" height="478" loading="lazy" decoding="async" alt="tau と a のペアプロット。発散したサンプルが橙で示され、tau が小さい漏斗の底に集中している">
+                </a>
+                <figcaption><span class="fig__file">mcmc_1_centered_pair.png</span>ペアプロット（橙 = 発散）。発散点が漏斗の底に集中しています。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_1_centered_rank.webp" data-caption="① 中心化: ランクプロット">
+                  <img src="figures/mcmc/mcmc_1_centered_rank.webp" width="1517" height="628" loading="lazy" decoding="async" alt="中心化でのランクプロット。ヒストグラムが一様でない">
+                </a>
+                <figcaption><span class="fig__file">mcmc_1_centered_rank.png</span>ランクプロット。一様なら合格。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_1_centered_energy.webp" data-caption="① 中心化: エネルギープロット">
+                  <img src="figures/mcmc/mcmc_1_centered_energy.webp" width="1770" height="409" loading="lazy" decoding="async" alt="中心化でのエネルギープロット。marginal energy と energy transition の 2 分布">
+                </a>
+                <figcaption><span class="fig__file">mcmc_1_centered_energy.png</span>エネルギー。2 分布が重なれば合格（BFMI 0.83）。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_1_centered_ppc.webp" data-caption="① 中心化: 事後予測チェック（PAV 校正曲線）">
+                  <img src="figures/mcmc/mcmc_1_centered_ppc.webp" width="1123" height="445" loading="lazy" decoding="async" alt="中心化での事後予測チェック。PAV 校正曲線">
+                </a>
+                <figcaption><span class="fig__file">mcmc_1_centered_ppc.png</span>事後予測。二値なので PAV 校正曲線を使っています。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_1_centered_ppc_by_cell.webp" data-caption="① 中心化: 性別 × 客室クラス別の事後予測チェック">
+                  <img src="figures/mcmc/mcmc_1_centered_ppc_by_cell.webp" width="1667" height="917" loading="lazy" decoding="async" alt="性別と客室クラスのセルごとに観測値と 94% 予測区間を比べた図">
+                </a>
+                <figcaption><span class="fig__file">mcmc_1_centered_ppc_by_cell.png</span>セル別の事後予測。性別 × 客室クラスごとに観測値と 94% 予測区間を比べます。</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div class="stage">
+            <p class="stage__label"><span>② 非中心化</span>R-hat 1.005 / ESS bulk 1,060 / 発散 9</p>
+            <div class="fig-grid fig-grid--2">
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_2_noncentered_trace.webp" data-caption="② 非中心化: トレースプロット">
+                  <img src="figures/mcmc/mcmc_2_noncentered_trace.webp" width="1521" height="1029" loading="lazy" decoding="async" alt="非中心化でのトレースプロット。チェーンが毛虫状に重なる">
+                </a>
+                <figcaption><span class="fig__file">mcmc_2_noncentered_trace.png</span>トレース。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_2_noncentered_pair.webp" data-caption="② 非中心化: ペアプロット">
+                  <img src="figures/mcmc/mcmc_2_noncentered_pair.webp" width="2335" height="478" loading="lazy" decoding="async" alt="非中心化でのペアプロット。漏斗形状が解消している">
+                </a>
+                <figcaption><span class="fig__file">mcmc_2_noncentered_pair.png</span>ペアプロット。漏斗が解消しています。</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div class="stage">
+            <p class="stage__label"><span>③ 事前分布を絞る</span>tau ~ half-N(0, 0.5) / 発散 1</p>
+            <div class="fig-grid fig-grid--2">
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_3_prior_trace.webp" data-caption="③ 事前分布を絞った場合のトレースプロット">
+                  <img src="figures/mcmc/mcmc_3_prior_trace.webp" width="1521" height="1029" loading="lazy" decoding="async" alt="事前分布を絞った場合のトレースプロット">
+                </a>
+                <figcaption><span class="fig__file">mcmc_3_prior_trace.png</span>トレース。ESS bulk 1,466。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_3_prior_pair.webp" data-caption="③ 事前分布を絞った場合のペアプロット">
+                  <img src="figures/mcmc/mcmc_3_prior_pair.webp" width="2366" height="478" loading="lazy" decoding="async" alt="事前分布を絞った場合のペアプロット。発散は 1 件">
+                </a>
+                <figcaption><span class="fig__file">mcmc_3_prior_pair.png</span>ペアプロット。発散は 1 件。</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div class="stage">
+            <p class="stage__label"><span>④ adapt_delta 0.99</span>R-hat 1.002 / ESS bulk 1,298 / 発散 0</p>
+            <div class="fig-grid fig-grid--2">
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_4_adapt_trace.webp" data-caption="④ 最終段: トレースプロット">
+                  <img src="figures/mcmc/mcmc_4_adapt_trace.webp" width="1521" height="1029" loading="lazy" decoding="async" alt="最終段のトレースプロット。全チェーンが毛虫状に重なる">
+                </a>
+                <figcaption><span class="fig__file">mcmc_4_adapt_trace.png</span>トレース。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_4_adapt_pair.webp" data-caption="④ 最終段: ペアプロット（発散 0）">
+                  <img src="figures/mcmc/mcmc_4_adapt_pair.webp" width="2358" height="478" loading="lazy" decoding="async" alt="最終段のペアプロット。発散したサンプルはゼロ">
+                </a>
+                <figcaption><span class="fig__file">mcmc_4_adapt_pair.png</span>ペアプロット。橙の点はありません。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_4_adapt_rank.webp" data-caption="④ 最終段: ランクプロット">
+                  <img src="figures/mcmc/mcmc_4_adapt_rank.webp" width="1517" height="628" loading="lazy" decoding="async" alt="最終段のランクプロット。ヒストグラムが一様">
+                </a>
+                <figcaption><span class="fig__file">mcmc_4_adapt_rank.png</span>ランクプロット。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_4_adapt_energy.webp" data-caption="④ 最終段: エネルギープロット">
+                  <img src="figures/mcmc/mcmc_4_adapt_energy.webp" width="1770" height="409" loading="lazy" decoding="async" alt="最終段のエネルギープロット。2 分布が重なる">
+                </a>
+                <figcaption><span class="fig__file">mcmc_4_adapt_energy.png</span>エネルギー。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_4_adapt_ppc.webp" data-caption="④ 最終段: 事後予測チェック">
+                  <img src="figures/mcmc/mcmc_4_adapt_ppc.webp" width="1352" height="445" loading="lazy" decoding="async" alt="最終段の事後予測チェック。PAV 校正曲線">
+                </a>
+                <figcaption><span class="fig__file">mcmc_4_adapt_ppc.png</span>事後予測。</figcaption>
+              </figure>
+              <figure class="fig">
+                <a class="fig__frame" data-figure href="figures/mcmc/mcmc_4_adapt_ppc_by_cell.webp" data-caption="④ 最終段: 性別 × 客室クラス別の事後予測">
+                  <img src="figures/mcmc/mcmc_4_adapt_ppc_by_cell.webp" width="1667" height="917" loading="lazy" decoding="async" alt="最終段のセル別事後予測。女性 2 等と女性 3 等のセルで観測値が 94% 予測区間の外にある">
+                </a>
+                <figcaption><span class="fig__file">mcmc_4_adapt_ppc_by_cell.png</span>セル別の事後予測。女性 2 等と女性 3 等が予測区間の外に出ています。</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから（④ / ① を併記）</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>R-hat max 1.002 / 1.035、ESS bulk min 1,298 / 161、ESS tail min 1,267 / 95</span></li>
+              <li><span class="badge badge--ok">OK</span><span>発散 0 / 213、BFMI 0.83、Pareto k max 0.24、<code>fit.diagnose()</code> 警告なし</span></li>
+              <li><span class="badge badge--check">確認</span><span>事後予測で女性 2 等・女性 3 等が 94% 区間外<span class="v-next">交互作用を入れて再推定</span></span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ================================================= 予測モデリング === -->
+    <section class="skill" id="s2" data-skill>
+      <div class="skill__head">
+        <div class="skill__num">②</div>
+        <div class="skill__titles">
+          <h2>予測モデリング</h2>
+          <code class="skill__slug">predictive-modeling-diagnostics</code>
+        </div>
+      </div>
+      <p class="skill__desc">分割と評価、木系モデル、モデル解釈。全 4 手法のうち 3 手法（<code>time-series.md</code> は Titanic に時系列がないため対象外）。</p>
+
+      <!-- 07 ML 評価 -->
+      <article class="method" id="m-mleval" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">07</span>
+            <h3>評価手続き・交差検証・リーク</h3>
+            <code class="method__ref">references/ml-evaluation.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>生存予測のロジスティック回帰 Pipeline（train 712 / test 179、<code>group = Ticket</code> で StratifiedGroupKFold）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 8</span> <span class="badge badge--check">確認 2</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/mleval/mleval_diagnostics.webp"
+               data-caption="ML 評価の診断 6 パネル">
+              <img src="figures/mleval/mleval_diagnostics.webp" width="3317" height="1967" loading="lazy" decoding="async"
+                   alt="機械学習評価の診断 6 パネル。学習曲線、交差検証の fold 別スコア分布、混同行列、ROC 曲線、PR 曲線、キャリブレーションプロット">
+            </a>
+            <figcaption>
+              <span class="fig__file">mleval_diagnostics.png</span>
+              学習曲線、CV の fold 別スコア分布（Dummy と「性別のみ」のベースラインを同じ軸に並置）、混同行列、ROC、PR、キャリブレーション。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>CV ROC-AUC 0.858 ± 0.052 vs Dummy 0.500 / 性別のみ 0.754 ± 0.033</span></li>
+              <li><span class="badge badge--ok">OK</span><span>前処理はすべて Pipeline 内。test 評価は 1 回だけ（AUC 0.901）</span></li>
+              <li><span class="badge badge--ok">OK</span><span>グループ無視との差 +0.003。ただし fold 間 SD はグループ分割のほうが 4 倍大きい</span></li>
+              <li><span class="badge badge--check">確認</span><span>キャリブレーション最大乖離 0.204（test 179 件）、閾値 0.5 固定</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 08 木系モデル -->
+      <article class="method" id="m-tree" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">08</span>
+            <h3>木系モデル（決定木・RF・GBDT）</h3>
+            <code class="method__ref">references/tree-model.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>生存予測の決定木・RandomForest・LightGBM（train 534 / valid 178 / test 179、<code>group = Ticket</code>）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 9</span> <span class="badge badge--check">確認 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/tree/tree_diagnostics.webp"
+               data-caption="木系モデルの診断 5 パネル">
+              <img src="figures/tree/tree_diagnostics.webp" width="3467" height="1967" loading="lazy" decoding="async"
+                   alt="木系モデルの診断 5 パネル。cost-complexity pruning path、葉のサンプル数、permutation importance、OOB error 対木の本数、GBDT の train/valid loss 曲線">
+            </a>
+            <figcaption>
+              <span class="fig__file">tree_diagnostics.png</span>
+              cost-complexity pruning path（採用 α = 0.0073 に縦破線）、葉のサンプル数、permutation importance、
+              RF の OOB error vs 本数、GBDT の train / valid loss（<code>best_iteration</code> = 301 に縦破線）。
+            </figcaption>
+          </figure>
+          <div class="fig-grid fig-grid--2">
+            <figure class="fig">
+              <a class="fig__frame" data-figure href="figures/tree/tree_dtreeviz_full.webp"
+                 data-caption="dtreeviz による決定木の全体可視化（深さ 3、葉 5 枚）">
+                <img src="figures/tree/tree_dtreeviz_full.webp" width="1030" height="999" loading="lazy" decoding="async"
+                     alt="dtreeviz で描いた決定木の全体像。各ノードに分布、各葉にサンプル数が表示されている">
+              </a>
+              <figcaption>
+                <span class="fig__file">tree_dtreeviz_full.png</span>
+                木の全体。深さ 4 以下なら全体を描き、各葉の n が読めることが条件です。
+              </figcaption>
+            </figure>
+            <figure class="fig">
+              <a class="fig__frame" data-figure href="figures/tree/tree_dtreeviz_path.webp"
+                 data-caption="dtreeviz による 1 件の予測パス（PassengerId 6）">
+                <img src="figures/tree/tree_dtreeviz_path.webp" width="855" height="903" loading="lazy" decoding="async"
+                     alt="dtreeviz で 1 サンプルの予測パスをハイライトした図">
+              </a>
+              <figcaption>
+                <span class="fig__file">tree_dtreeviz_path.png</span>
+                1 件の予測パス。分岐の <code>Age ≤ -0.5</code> は「年齢不明」の意味です（欠測を −1 で符号化）。
+              </figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>決定木 train / valid 0.794 / 0.826、最小葉 16 件</span></li>
+              <li><span class="badge badge--ok">OK</span><span>RF train / OOB / valid 0.899 / 0.796 / 0.815、GBDT train / valid AUC 0.962 / 0.915</span></li>
+              <li><span class="badge badge--ok">OK</span><span>permutation importance 上位は male, Pclass, Fare。seed 5 本の SD 0.0008</span></li>
+              <li><span class="badge badge--check">確認</span><span>OOB error の変動幅 0.011（200〜500 本）<span class="v-next">本数を 1,000 まで増やして確認</span></span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 09 モデル解釈 -->
+      <article class="method" id="m-interp" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">09</span>
+            <h3>モデル解釈（SHAP・PDP / ICE）</h3>
+            <code class="method__ref">references/model-interpretation.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>LightGBM 生存予測の permutation importance・SHAP・PDP / ICE（valid n = 178）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 7</span> <span class="badge badge--check">確認 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <div class="note note--quiet">
+            <p>予測モデルの振る舞いの説明であり、因果効果ではありません。この 1 文を報告冒頭に書くこと自体が診断項目になっています。</p>
+          </div>
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/interp/interp_importance_shap.webp"
+               data-caption="モデル解釈の診断 4 パネル">
+              <img src="figures/interp/interp_importance_shap.webp" width="2716" height="2192" loading="lazy" decoding="async"
+                   alt="permutation importance の棒とエラーバー、SHAP beeswarm、SHAP bar、特徴量間相関ヒートマップの 4 パネル">
+            </a>
+            <figcaption>
+              <span class="fig__file">interp_importance_shap.png</span>
+              permutation importance（棒 + エラーバー）、SHAP beeswarm、SHAP bar、特徴量間相関ヒートマップ。
+            </figcaption>
+          </figure>
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/interp/interp_pdp_ice.webp"
+               data-caption="上位 3 特徴の PDP + ICE + rug">
+              <img src="figures/interp/interp_pdp_ice.webp" width="3167" height="1037" loading="lazy" decoding="async"
+                   alt="上位 3 特徴の部分依存プロットに個別条件付き期待値の線と rug プロットを重ねた図">
+            </a>
+            <figcaption>
+              <span class="fig__file">interp_pdp_ice.png</span>
+              上位 3 特徴の PDP に ICE を重ね、x 軸にデータ密度の rug を描いたもの。SHAP は対数オッズ、PDP / ICE は予測確率です。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>SHAP 加法性の検算 max |差| = 1.1e-14（valid 全件）</span></li>
+              <li><span class="badge badge--ok">OK</span><span>重要度順位の安定性 ρ 平均 0.78（5 fold）、手法間の順位一致 ρ = 0.98</span></li>
+              <li><span class="badge badge--ok">OK</span><span>|r| &gt; 0.8 のペアなし（最大 0.62、Pclass–Fare）</span></li>
+              <li><span class="badge badge--check">確認</span><span>Fare &gt; 100 は valid の 7.3%<span class="v-next">密度の薄い領域の PDP は読まない</span></span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===================================================== 因果推論 === -->
+    <section class="skill" id="s3" data-skill>
+      <div class="skill__head">
+        <div class="skill__num">③</div>
+        <div class="skill__titles">
+          <h2>因果推論</h2>
+          <code class="skill__slug">causal-inference-diagnostics</code>
+        </div>
+      </div>
+      <p class="skill__desc">観察データの効果推定と準実験。全 3 手法のうち 2 手法（<code>ab-test.md</code> は Titanic にランダム割付がないため対象外）。</p>
+
+      <!-- 10 傾向スコア -->
+      <article class="method" id="m-causal-obs" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">10</span>
+            <h3>観察データの効果推定（傾向スコア・IPW）</h3>
+            <code class="method__ref">references/causal-observational.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>処置 = 1 等客室（216 人）、結果 = 生存。傾向スコア + IPW（n = 891）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 4</span> <span class="badge badge--check">確認 4</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/causal-obs/causal_obs_diagnostics.webp"
+               data-caption="傾向スコア・IPW の診断 4 パネル">
+              <img src="figures/causal-obs/causal_obs_diagnostics.webp" width="2567" height="1967" loading="lazy" decoding="async"
+                   alt="傾向スコアの群別分布、標準化平均差の love plot、IPW 重みのヒストグラム、ナイーブ比較と調整後推定の比較の 4 パネル">
+            </a>
+            <figcaption>
+              <span class="fig__file">causal_obs_diagnostics.png</span>
+              群別の傾向スコア分布（共通サポートの確認）、love plot（調整前後の SMD、|SMD| = 0.1 に縦破線）、IPW 重みの分布、
+              ナイーブ比較 vs 調整後推定。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>ナイーブ +0.324 [+0.246, +0.400] / ATE +0.282 [+0.198, +0.367] / ATT +0.298 [+0.226, +0.374]</span></li>
+              <li><span class="badge badge--ok">OK</span><span>PS モデル AUC 0.789、Kish 有効 n 438 / 781（56%）、トリミングで 110 件除外</span></li>
+              <li><span class="badge badge--check">確認</span><span>|SMD| max 0.161（年齢欠測フラグ、基準 &lt; 0.1）<span class="v-next">交互作用を足すか層別して再推定</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>E-value 3.33（参考: 性別と生存の RR は 3.93）、SUTVA が破れうる</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 11 RDD -->
+      <article class="method" id="m-causal-qe" data-method data-verdicts="ok check act">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">11</span>
+            <h3>準実験：回帰不連続デザイン（RDD）</h3>
+            <code class="method__ref">references/causal-quasi-experimental.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>男性乗客（年齢記録あり 453 人）、年齢 13 歳を閾値にした「子ども扱い」の局所効果。閾値近傍の観測が足りず効果は報告していない</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 3</span> <span class="badge badge--check">確認 2</span> <span class="badge badge--act">要対処 5</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/causal-qe/causal_qe_rdd_diagnostics.webp"
+               data-caption="RDD の診断 4 パネル">
+              <img src="figures/causal-qe/causal_qe_rdd_diagnostics.webp" width="2567" height="1967" loading="lazy" decoding="async"
+                   alt="回帰不連続デザインの診断 4 パネル。ビン化散布図と閾値両側の局所線形フィット、バンド幅感度、年齢の密度、共変量の跳びとプラセボ閾値">
+            </a>
+            <figcaption>
+              <span class="fig__file">causal_qe_rdd_diagnostics.png</span>
+              ビン化散布図と閾値両側の局所線形フィット、バンド幅感度（最適の 0.5〜2 倍）、running variable（年齢）の密度、共変量の跳びとプラセボ閾値。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--act">要対処</span><span>推定値 +1.67 [+1.47, +2.59]。生存確率の差なので範囲外<span class="v-next">効果は報告しない</span></span></li>
+              <li><span class="badge badge--act">要対処</span><span>閾値近傍 n = 4 / 3（目安は両側 ≥ 20）、共変量の跳びが 0/4 変数で推定不能</span></li>
+              <li><span class="badge badge--act">要対処</span><span>プラセボ閾値 25 歳で跳びあり（−0.195 [−0.275, −0.107]）</span></li>
+              <li><span class="badge badge--ok">OK</span><span>密度検定 p = 0.99、局所線形（p = 1）+ MSE 最適バンド幅 + 三角カーネル</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ================================================ 教師なし・EDA === -->
+    <section class="skill" id="s4" data-skill>
+      <div class="skill__head">
+        <div class="skill__num">④</div>
+        <div class="skill__titles">
+          <h2>教師なし分析・EDA 前処理</h2>
+          <code class="skill__slug">unsupervised-eda-diagnostics</code>
+        </div>
+      </div>
+      <p class="skill__desc">欠測と外れ値、クラスタリング、次元削減、異常検知。全 4 手法。</p>
+
+      <!-- 12 欠測・外れ値 -->
+      <article class="method" id="m-missing" data-method data-verdicts="ok check act">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">12</span>
+            <h3>欠測・外れ値・EDA 前処理</h3>
+            <code class="method__ref">references/missing-data.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>Titanic 全 891 行の欠測パターン・代入（IterativeImputer）・外れ値候補</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 2</span> <span class="badge badge--check">確認 3</span> <span class="badge badge--act">要対処 3</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/missing/missing_diagnostics.webp"
+               data-caption="欠測と外れ値の診断 6 パネル">
+              <img src="figures/missing/missing_diagnostics.webp" width="3466" height="2042" loading="lazy" decoding="async"
+                   alt="欠測マトリクス、欠測相関ヒートマップ、群別欠測率、観測値と代入値の分布比較、運賃の分布、相関行列の 6 パネル">
+            </a>
+            <figcaption>
+              <span class="fig__file">missing_diagnostics.png</span>
+              欠測マトリクス、欠測相関ヒートマップ、群別の欠測率、観測値 vs 代入値の分布比較（平均値代入も併置）、
+              運賃の分布（外れ値候補に印）、相関行列。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--act">要対処</span><span>Cabin 欠測 77.1%<span class="v-next">値を使わず HasCabin フラグに置き換え</span></span></li>
+              <li><span class="badge badge--act">要対処</span><span>リストワイズ削除で 177 / 891（19.9%）を失う、Fare の歪度 4.79<span class="v-next">MICE を併記、log1p(Fare) を使う</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>Fare &gt; 100.3 が 53 件、Fare = 0 が 15 件<span class="v-next">実データを見て別母集団かを判断</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>Age 欠測率は 1 等 13.9% / 3 等 27.7%。客室クラス依存の MAR と見立て</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 13 クラスタリング -->
+      <article class="method" id="m-cluster" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">13</span>
+            <h3>クラスタリング（k-means・Ward）</h3>
+            <code class="method__ref">references/clustering.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>年齢・log1p(運賃)・log1p(SibSp)・log1p(Parch) を標準化して k-means と Ward 法（n = 714、p = 4）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 7</span> <span class="badge badge--check">確認 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/cluster/cluster_diagnostics.webp"
+               data-caption="クラスタリングの診断 6 パネル">
+              <img src="figures/cluster/cluster_diagnostics.webp" width="3466" height="2042" loading="lazy" decoding="async"
+                   alt="クラスタリングの診断 6 パネル。エルボーとシルエットと帰無ベースラインの帯、シルエットプロット、PCA 射影、標準化セントロイドのヒートマップ、デンドログラム、外部変数プロファイル">
+            </a>
+            <figcaption>
+              <span class="fig__file">cluster_diagnostics.png</span>
+              エルボー + シルエット + 帰無ベースライン（列ごと順列 20 本の 5〜95% を灰色の帯で重ねたもの）、シルエットプロット、
+              PCA 2 次元射影、標準化セントロイド、デンドログラム、クラスタリングに使っていない変数でのプロファイル。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>シルエット平均 0.42（k = 9）に対し帰無 95% = 0.31</span></li>
+              <li><span class="badge badge--ok">OK</span><span>安定性 ARI: seed 5 本 0.96 / 80% サブサンプル 0.93 / Ward との一致 0.80</span></li>
+              <li><span class="badge badge--ok">OK</span><span>各クラスタの n は 5.3%〜36%、cophenetic 相関 0.70、n_init = 20</span></li>
+              <li><span class="badge badge--check">確認</span><span>帰無との差が k によらずほぼ一定（0.106〜0.107）<span class="v-next">GMM の BIC でも比較し、運用可能な数から人が決める</span></span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 14 次元削減 -->
+      <article class="method" id="m-dimred" data-method data-verdicts="ok check act">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">14</span>
+            <h3>次元削減（PCA・因子分析・t-SNE）</h3>
+            <code class="method__ref">references/dimensionality-reduction.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>乗客属性 7 変数を標準化（n = 714）。PCA・探索的因子分析・t-SNE</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 5</span> <span class="badge badge--check">確認 3</span> <span class="badge badge--act">要対処 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/dimred/dimred_pca_efa.webp"
+               data-caption="PCA・因子分析の診断 4 パネル">
+              <img src="figures/dimred/dimred_pca_efa.webp" width="2567" height="2117" loading="lazy" decoding="async"
+                   alt="スクリープロットに平行分析のランダム固有値を重ねた図、バイプロット、回転後負荷量のヒートマップと共通性、累積寄与率の 4 パネル">
+            </a>
+            <figcaption>
+              <span class="fig__file">dimred_pca_efa.png</span>
+              スクリープロット + 平行分析（推奨因子数 2 に縦破線）、バイプロット、回転後負荷量のヒートマップと共通性、累積寄与率。
+            </figcaption>
+          </figure>
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/dimred/dimred_tsne_grid.webp"
+               data-caption="t-SNE の安定性グリッド（perplexity 5 / 30 / 50 × seed 3 本）">
+              <img src="figures/dimred/dimred_tsne_grid.webp" width="2717" height="2567" loading="lazy" decoding="async"
+                   alt="t-SNE を perplexity 5, 30, 50 と 3 つの seed で実行した 9 枚のグリッド。各パネルに trustworthiness を併記">
+            </a>
+            <figcaption>
+              <span class="fig__file">dimred_tsne_grid.png</span>
+              perplexity 5 / 30 / 50 × seed 3 本のグリッド。各パネルに trustworthiness を併記し、
+              「クラスタの大きさと距離は意味を持たない」と注記しています。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--act">要対処</span><span>共通性の最小が 男性 0.11、年齢 0.27（基準 &gt; 0.3）<span class="v-next">因子の解釈から外すか変数を入れ替える</span></span></li>
+              <li><span class="badge badge--ok">OK</span><span>KMO 0.66、Bartlett p &lt; 1e-300、因子数は平行分析で 2</span></li>
+              <li><span class="badge badge--ok">OK</span><span>t-SNE の近傍一致 Jaccard 0.89〜0.97、trustworthiness 0.98〜0.99</span></li>
+              <li><span class="badge badge--check">確認</span><span>累積寄与率は PC2 まで 62.6%、二値・順序変数を Pearson 相関で扱っている</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 15 異常検知 -->
+      <article class="method" id="m-anomaly" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">15</span>
+            <h3>異常検知（IsolationForest）</h3>
+            <code class="method__ref">references/anomaly-detection.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>年齢・運賃・家族構成・客室クラスを標準化して IsolationForest（n = 714、contamination 2%）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 3</span> <span class="badge badge--check">確認 4</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/anomaly/anomaly_diagnostics.webp"
+               data-caption="異常検知の診断 4 パネル">
+              <img src="figures/anomaly/anomaly_diagnostics.webp" width="2714" height="2192" loading="lazy" decoding="async"
+                   alt="異常スコアのヒストグラムと閾値、上位 14 件の特徴量 z スコアヒートマップ、手法間の Jaccard、contamination 感度分析の 4 パネル">
+            </a>
+            <figcaption>
+              <span class="fig__file">anomaly_diagnostics.png</span>
+              異常スコアのヒスト（閾値に縦破線）、上位 14 件の特徴量 z スコア（各行が「なぜ異常か」）、
+              単純ベースラインとの上位集合 Jaccard、contamination を 0.5〜5% と変えた感度分析。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>上位 14 件すべてに各特徴の z スコアを付与。Survived は異常ラベルとして使っていない</span></li>
+              <li><span class="badge badge--check">確認</span><span>IF vs LOF の上位集合 Jaccard = 0.00（IF の seed 間は平均 0.68）<span class="v-next">複数手法で共通する行だけを要確認に</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>スコア分布に明確な切れ目がない<span class="v-next">「件数で決めた」と明記</span></span></li>
+              <li><span class="badge badge--check">確認</span><span>単純ベースラインとの Jaccard は z スコア 0.33 / Mahalanobis 0.27。ラベルがなく勝敗は判定できない</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ==================================== シミュレーション・最適化 === -->
+    <section class="skill" id="s5" data-skill>
+      <div class="skill__head">
+        <div class="skill__num">⑤</div>
+        <div class="skill__titles">
+          <h2>シミュレーション・数理最適化</h2>
+          <code class="skill__slug">simulation-optimization-diagnostics</code>
+        </div>
+      </div>
+      <p class="skill__desc">モンテカルロと MIP。全 2 手法。</p>
+
+      <!-- 16 モンテカルロ -->
+      <article class="method" id="m-sim" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">16</span>
+            <h3>モンテカルロシミュレーション</h3>
+            <code class="method__ref">references/simulation.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>回帰係数の不確実性を伝播させた what-if「全員が 3 等の条件だったら生存者は何人か」（891 人、20,000 反復）</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 7</span> <span class="badge badge--check">確認 2</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/sim/sim_diagnostics.webp"
+               data-caption="モンテカルロの診断 4 パネル">
+              <img src="figures/sim/sim_diagnostics.webp" width="2567" height="1967" loading="lazy" decoding="async"
+                   alt="running mean と 95% 信頼区間、出力分布のヒストグラムと分位点、OAT 感度分析の tornado 図、共通乱数によるシナリオ差の分布の 4 パネル">
+            </a>
+            <figcaption>
+              <span class="fig__file">sim_diagnostics.png</span>
+              running mean ± 95% CI vs 反復数、出力の分布（5 / 50 / 95 パーセンタイルに縦破線）、OAT 感度分析の tornado、
+              共通乱数で対応づけたシナリオ差の分布。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>MCSE 0.100 / CI 半幅 0.196（人数で報告するので基準は &lt; 0.5）</span></li>
+              <li><span class="badge badge--ok">OK</span><span>解析解と一致（平均 342.1 vs Σp 342.0、分散比 0.985）、保存則の誤差 5.7e-14</span></li>
+              <li><span class="badge badge--ok">OK</span><span>共通乱数で差の SD が 19.1 → 14.2。裾リスク P(差 ≤ −100 人) = 84.0%（MCSE 0.3pt、95% 半幅 0.5pt）</span></li>
+              <li><span class="badge badge--check">確認</span><span>モデル上の what-if であり因果効果ではない。入力分布は MLE の漸近正規</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 17 最適化 -->
+      <article class="method" id="m-opt" data-method data-verdicts="ok check">
+        <div class="method__head">
+          <div class="method__titleline">
+            <span class="method__num">17</span>
+            <h3>数理最適化（MIP）</h3>
+            <code class="method__ref">references/optimization.md</code>
+          </div>
+          <div class="method__meta">
+            <dl>
+              <dt>題材</dt>
+              <dd>同行者を分けない救命ボート座席割当（681 グループ × 20 隻、定員計 472 席、PuLP + HiGHS）。史実の定員を縮小した仮想問題</dd>
+              <dt>判定</dt>
+              <dd><span class="badge badge--ok">OK 6</span> <span class="badge badge--check">確認 1</span></dd>
+            </dl>
+          </div>
+        </div>
+        <div class="method__body">
+          <figure class="fig">
+            <a class="fig__frame" data-figure href="figures/opt/opt_diagnostics.webp"
+               data-caption="数理最適化の診断 4 パネル">
+              <img src="figures/opt/opt_diagnostics.webp" width="2717" height="2117" loading="lazy" decoding="async"
+                   alt="MIP gap の時間推移、ボートごとの着席構成の積み上げ棒、パラメータ感度の tornado 図、貪欲法ベースラインとの目的値比較の 4 パネル">
+            </a>
+            <figcaption>
+              <span class="fig__file">opt_diagnostics.png</span>
+              MIP gap vs 経過時間、解の可視化（ボート別の着席構成で定員と左舷ルールを確認）、パラメータ ±20% の tornado、
+              貪欲法ベースラインとの目的値比較。
+            </figcaption>
+          </figure>
+          <div class="verdicts">
+            <p class="verdicts__title">診断サマリーから</p>
+            <ul>
+              <li><span class="badge badge--ok">OK</span><span>status = Optimal（timeLimit 60 秒 / gapRel 1e-4 / seed 固定で 0.48 秒、最終 gap 0.0）。時間切れではない</span></li>
+              <li><span class="badge badge--ok">OK</span><span>解を代入して独立に再検証した制約違反の最大値 3.3e-16、目的値の再計算差 0.0</span></li>
+              <li><span class="badge badge--ok">OK</span><span>MIP 900 vs 貪欲法 754（+19.4%）、変数 8,590 / 制約 701、LP 双対値は全隻 1.00</span></li>
+              <li><span class="badge badge--check">確認</span><span>重み（子ども 3 : 女性 2 : 成人男性 1）は仮定。定員 ±20% で解の構造が変わる</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="footer__grid">
+    <div>
+      <h3>このサイトについて</h3>
+      <ul>
+        <li><code>ds-ai-coding-skills</code> の <code>*-diagnostics</code> skills が要求する診断図のギャラリーです。</li>
+        <li>5 スキル・17 手法・45 図。</li>
+      </ul>
+    </div>
+    <div>
+      <h3>スキル</h3>
+      <ul>
+        <li><a href="#s1">statistical-inference-diagnostics</a></li>
+        <li><a href="#s2">predictive-modeling-diagnostics</a></li>
+        <li><a href="#s3">causal-inference-diagnostics</a></li>
+        <li><a href="#s4">unsupervised-eda-diagnostics</a></li>
+        <li><a href="#s5">simulation-optimization-diagnostics</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>リンク</h3>
+      <ul>
+        <li><a href="https://github.com/atsushi-green/ds-ai-coding-skills" target="_blank" rel="noopener">GitHub リポジトリ</a></li>
+        <li><a href="https://zenn.dev/green_tea" target="_blank" rel="noopener">zenn.dev/green_tea</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<div class="lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="図の拡大表示">
+  <button class="lightbox__close" data-lightbox-close type="button" aria-label="閉じる">×</button>
+  <div class="lightbox__stage">
+    <img class="lightbox__img" data-lightbox-img alt="">
+    <div class="lightbox__bar">
+      <p class="lightbox__cap" data-lightbox-cap></p>
+      <a class="btn" data-lightbox-link href="#" target="_blank" rel="noopener">原寸で開く</a>
+    </div>
+  </div>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

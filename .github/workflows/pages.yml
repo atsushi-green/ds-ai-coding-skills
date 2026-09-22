@@ -1,0 +1,42 @@
+name: Deploy gallery to GitHub Pages
+
+# docs/gallery/ を GitHub Pages に公開する。
+# 初回だけリポジトリの Settings > Pages > Source を "GitHub Actions" に変更する必要がある。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/gallery/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# 同時実行を 1 本に絞る（走行中のデプロイは完走させる）
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload gallery
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/gallery
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
