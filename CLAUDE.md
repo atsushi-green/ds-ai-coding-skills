@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+`AGENTS.md` carries the same content for GitHub Copilot and Codex. Everything from
+`## Hard Rules` onward must match between the two files; `scripts/sync_agent_docs.py --check`
+enforces this. The `## Skills` section at the end is Claude-specific.
+
 This is a **Python 3.11 data science / analysis project**.
 
 Detailed task-specific procedures are in `.claude/skills/*/SKILL.md`.
@@ -13,6 +17,7 @@ Project-specific context is in `docs/agent/*`.
 - Explain assumptions before non-trivial analytical decisions.
 - Ask for clarification when data semantics are unclear.
 - Use `uv` exclusively for Python dependency management. Never use pip, conda, poetry, or pipenv.
+- When applying a statistical, ML, causal, simulation, or optimization method, always apply the matching `*-diagnostics` skill (図と値をセットで出す).
 
 ## Package Management
 
@@ -93,7 +98,8 @@ uv run python scripts/check_no_sensitive_patterns.py
 | DataFrame operations | [dataframe-polars](.claude/skills/dataframe-polars/SKILL.md) |
 | Charts and visualization | [visualization](.claude/skills/visualization/SKILL.md) |
 | Notebook creation and editing | [notebook-workflow](.claude/skills/notebook-workflow/SKILL.md) |
-| Statistics or ML | [statistical-ml-review](.claude/skills/statistical-ml-review/SKILL.md) |
+| Running any statistical / ML / causal / simulation / optimization method | the matching `*-diagnostics` router (5 families, each routing to `references/<method>.md`): [statistical-inference](.claude/skills/statistical-inference-diagnostics/SKILL.md), [predictive-modeling](.claude/skills/predictive-modeling-diagnostics/SKILL.md), [causal-inference](.claude/skills/causal-inference-diagnostics/SKILL.md), [unsupervised-eda](.claude/skills/unsupervised-eda-diagnostics/SKILL.md), [simulation-optimization](.claude/skills/simulation-optimization-diagnostics/SKILL.md) |
+| Reviewing someone else's statistics or ML work | [statistical-ml-review](.claude/skills/statistical-ml-review/SKILL.md) |
 | Analysis summaries and reports | [analysis-reporting](.claude/skills/analysis-reporting/SKILL.md) |
 | File paths and I/O | [path-and-io](.claude/skills/path-and-io/SKILL.md) |
 
@@ -111,6 +117,7 @@ uv run python scripts/check_no_sensitive_patterns.py
 | [reporting-guidelines.md](docs/agent/reporting-guidelines.md) | 報告テンプレート |
 | [security-and-privacy.md](docs/agent/security-and-privacy.md) | セキュリティ・プライバシー |
 | [agent-behavior.md](docs/agent/agent-behavior.md) | エージェント行動指針 |
+| [diagnostics-reference-template.md](docs/agent/diagnostics-reference-template.md) | 診断 skill（*-diagnostics）への手法追加手順と雛形 |
 
 ## Skills
 

@@ -16,7 +16,7 @@ ${input:target:Target variable}
 Task:
 ${input:task:Prediction task description}
 
-`AGENTS.md`、`.github/skills/` 配下の関連スキル、`docs/agent/*` に従って以下を実施する。
+`AGENTS.md`、`.claude/skills/` 配下の関連スキル、`docs/agent/*` に従って以下を実施する。
 
 1. 特徴量エンジニアリングのコードを `src/analysis_project/` 配下に作成する。
 2. モデリングのコードを `src/analysis_project/` 配下に作成する。

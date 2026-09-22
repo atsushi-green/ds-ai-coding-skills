@@ -12,7 +12,7 @@ description: "リポジトリの規約が変更されたときにAGENTS.md・ス
 ## 手順
 
 1. `AGENTS.md` のルーティングテーブルやルールに更新が必要か確認する。
-2. `.github/skills/*/SKILL.md` に更新が必要なものがないか確認する。
+2. `.claude/skills/*/SKILL.md` に更新が必要なものがないか確認する。
 3. `docs/agent/*.md` に更新が必要なものがないか確認する。
 
 ## ルール
