@@ -38,7 +38,7 @@ PROMPT_ARG_SKILL = (
     "このスキルの説明。\n\n"
     "Dataset:\n${input:dataset_path:Path to the input dataset}\n\n"
     "Topic:\n${input:topic:Short description}\n\n"
-    "`AGENTS.md`、`.github/skills/` に従う。\n\n"
+    "`AGENTS.md`、`.claude/skills/` に従う。\n\n"
     "1. 手順1\n2. 手順2\n"
 )
 
@@ -59,13 +59,6 @@ def test_normalize_crlf_and_trailing() -> None:
     assert sync.normalize("a\rb") == "a\nb\n"
     assert sync.normalize("a\n\n\n") == "a\n"
     assert sync.normalize("no-trailing") == "no-trailing\n"
-
-
-def test_link_conversion_round_trip() -> None:
-    claude = "see [x](.claude/skills/path-and-io/SKILL.md) now"
-    github = "see [x](../path-and-io/SKILL.md) now"
-    assert sync.claude_to_github(claude) == github
-    assert sync.github_to_claude(github) == claude
 
 
 def test_split_frontmatter() -> None:
@@ -181,13 +174,14 @@ def test_insert_block_at_para_restores_position() -> None:
 def test_rewrite_task_references_round_trip() -> None:
     text = "see CLAUDE.md and .claude/skills/foo/SKILL.md"
     to_prompt = sync.rewrite_task_references(text, to_prompt=True, name="run-eda")
-    assert to_prompt == "see AGENTS.md and .github/skills/foo/SKILL.md"
+    # skill の実体は両陣営とも `.claude/skills/` にあるため、変換対象はルーター文書名だけ
+    assert to_prompt == "see AGENTS.md and .claude/skills/foo/SKILL.md"
     assert sync.rewrite_task_references(to_prompt, to_prompt=False, name="run-eda") == text
 
 
 def test_rewrite_task_references_exempt_preserves_bilingual_meta() -> None:
     # 両陣営を併記するメタ文書は変換しない(文意保護)
-    text = "CLAUDE.md と AGENTS.md を併記、.claude/skills/ と .github/skills/"
+    text = "CLAUDE.md と AGENTS.md を併記する説明"
     assert sync.rewrite_task_references(text, to_prompt=True, name="sync-agent-docs") == text
 
 
@@ -291,43 +285,102 @@ def test_arg_skill_with_prompt_missing_placeholders_refuses() -> None:
 
 
 # --------------------------------------------------------------------------------------
-# 通常スキルの同期(sync_pair): 方向・check・in_sync判定・書き込み
+# ルーター文書の同期(sync_router_docs): 分割・方向・check・改行コード保持
 # --------------------------------------------------------------------------------------
-def _write_shared_pair(tmp_path: Path, claude_body: str, github_body: str) -> sync.SkillPair:
-    claude = tmp_path / "c.md"
-    github = tmp_path / "g.md"
-    claude.write_text(f"---\nname: x\n---\n\n{claude_body}\n", encoding="utf-8")
-    github.write_text(f"---\nname: x\n---\n\n{github_body}\n", encoding="utf-8")
-    return sync.SkillPair(name="x", claude_path=claude, github_path=github)
+ROUTER_BODY = "## Hard Rules (Always Apply)\n\n- ルール1\n\n## Skill Routing\n\n| Task | Skill |\n"
 
 
-def test_sync_pair_in_sync_ignores_only_link_notation(tmp_path: Path) -> None:
-    pair = _write_shared_pair(
-        tmp_path,
-        "see [a](.claude/skills/foo/SKILL.md)",
-        "see [a](../foo/SKILL.md)",
+def _write_router_pair(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    claude_body: str,
+    agents_body: str,
+    *,
+    agents_crlf: bool = False,
+) -> tuple[Path, Path]:
+    """CLAUDE.md / AGENTS.md の組を作り、モジュール定数を差し替える。"""
+    claude = tmp_path / "CLAUDE.md"
+    agents = tmp_path / "AGENTS.md"
+    claude_text = (
+        f"# CLAUDE.md\n\nClaude向けの導入。\n\n{claude_body}"
+        "\n## Skills\n\n@.claude/skills/x/SKILL.md\n"
     )
-    assert sync.sync_pair(pair, check_only=True, direction=None) == "in_sync"
+    agents_text = f"# AGENTS.md\n\nCopilot/Codex向けの導入。\n\n{agents_body}"
+    claude.write_bytes(claude_text.encode("utf-8"))
+    agents.write_bytes(
+        (agents_text.replace("\n", "\r\n") if agents_crlf else agents_text).encode("utf-8")
+    )
+    monkeypatch.setattr(sync, "CLAUDE_ROUTER_PATH", claude)
+    monkeypatch.setattr(sync, "AGENTS_ROUTER_PATH", agents)
+    return claude, agents
 
 
-def test_sync_pair_check_only_does_not_write(tmp_path: Path) -> None:
-    pair = _write_shared_pair(tmp_path, "content A", "different B")
-    before = pair.github_path.read_text(encoding="utf-8")
-    assert sync.sync_pair(pair, check_only=True, direction=None) == "drift"
-    assert pair.github_path.read_text(encoding="utf-8") == before  # 書き込まれない
+def test_split_router_doc_round_trips_and_isolates_claude_only_section() -> None:
+    text = f"# CLAUDE.md\n\n導入。\n\n{ROUTER_BODY}\n## Skills\n\n@x\n"
+    head, body, tail = sync.split_router_doc(text)
+    # 3分割は元テキストを失わない(連結で復元できる)
+    assert head + body + tail == sync.normalize(text)
+    assert body == ROUTER_BODY
+    assert tail.startswith("\n## Skills")
 
 
-def test_sync_pair_writes_in_requested_direction(tmp_path: Path) -> None:
-    # direction=claude: github側がclaudeの内容(リンク変換済み)で上書きされる
-    pair = _write_shared_pair(tmp_path, "see [a](.claude/skills/foo/SKILL.md)", "stale")
-    assert sync.sync_pair(pair, check_only=False, direction="claude") == "updated_github"
-    assert "../foo/SKILL.md" in pair.github_path.read_text(encoding="utf-8")
-    assert pair.claude_path.read_text(encoding="utf-8").count("stale") == 0
+def test_split_router_doc_without_claude_only_section() -> None:
+    _, body, tail = sync.split_router_doc(f"# AGENTS.md\n\n導入。\n\n{ROUTER_BODY}")
+    assert body == ROUTER_BODY
+    assert tail == ""
 
-    # direction=github: claude側がgithubの内容(リンク逆変換済み)で上書きされる
-    pair2 = _write_shared_pair(tmp_path, "stale", "see [a](../bar/SKILL.md)")
-    assert sync.sync_pair(pair2, check_only=False, direction="github") == "updated_claude"
-    assert ".claude/skills/bar/SKILL.md" in pair2.claude_path.read_text(encoding="utf-8")
+
+def test_split_router_doc_rejects_missing_heading() -> None:
+    with pytest.raises(ValueError, match="Hard Rules"):
+        sync.split_router_doc("# AGENTS.md\n\n見出しの無い本文\n")
+
+
+def test_sync_router_docs_in_sync_ignores_header_and_eol(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # 冒頭の導入文・`## Skills`・改行コードが違っても、共通本文が同じならin_sync
+    _write_router_pair(tmp_path, monkeypatch, ROUTER_BODY, ROUTER_BODY, agents_crlf=True)
+    assert sync.sync_router_docs(check_only=True, direction=None) == "in_sync"
+
+
+def test_sync_router_docs_check_only_does_not_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, agents = _write_router_pair(
+        tmp_path, monkeypatch, ROUTER_BODY, ROUTER_BODY.replace("ルール1", "ルール2")
+    )
+    before = agents.read_bytes()
+    assert sync.sync_router_docs(check_only=True, direction=None) == "drift"
+    assert agents.read_bytes() == before  # 書き込まれない
+
+
+def test_sync_router_docs_writes_in_requested_direction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # direction=claude: AGENTS.md の本文だけが上書きされ、固有の導入文とCRLFは残る
+    claude, agents = _write_router_pair(
+        tmp_path,
+        monkeypatch,
+        ROUTER_BODY,
+        "## Hard Rules (Always Apply)\n\n- 古い\n",
+        agents_crlf=True,
+    )
+    assert sync.sync_router_docs(check_only=False, direction="claude") == "updated_github"
+    written = agents.read_bytes().decode("utf-8")
+    assert "- ルール1" in written and "古い" not in written
+    assert "Copilot/Codex向けの導入。" in written  # 冒頭は各ファイル固有
+    assert "## Skills" not in written  # Claude固有セクションは持ち込まない
+    assert "\r\n" in written  # 改行コードを保持
+
+    # direction=github: CLAUDE.md の本文だけが上書きされ、`## Skills` は残る
+    _write_router_pair(
+        tmp_path, monkeypatch, "## Hard Rules (Always Apply)\n\n- 古い\n", ROUTER_BODY
+    )
+    assert sync.sync_router_docs(check_only=False, direction="github") == "updated_claude"
+    written = claude.read_text(encoding="utf-8")
+    assert "- ルール1" in written and "古い" not in written
+    assert written.endswith("## Skills\n\n@.claude/skills/x/SKILL.md\n")
+    assert "Claude向けの導入。" in written
 
 
 # --------------------------------------------------------------------------------------
@@ -413,13 +466,10 @@ def test_main_check_is_nondestructive_and_reports_status(
 # 実リポジトリに対する統合テスト(退行防止)
 # フィクスチャがコードと同じ思い込みで間違っていても、実ファイルとの照合で検出する。
 # --------------------------------------------------------------------------------------
-def test_repository_shared_skills_in_sync() -> None:
-    pairs = sync.discover_pairs()
-    assert pairs, "通常スキルのペアが検出されない"
-    for pair in pairs:
-        claude_text = sync.normalize(pair.claude_path.read_text(encoding="utf-8"))
-        github_text = sync.normalize(pair.github_path.read_text(encoding="utf-8"))
-        assert sync.claude_to_github(claude_text) == github_text, f"{pair.name}: in_syncでない"
+def test_repository_router_docs_in_sync() -> None:
+    _, claude_body, _ = sync.split_router_doc(sync.CLAUDE_ROUTER_PATH.read_text(encoding="utf-8"))
+    _, agents_body, _ = sync.split_router_doc(sync.AGENTS_ROUTER_PATH.read_text(encoding="utf-8"))
+    assert claude_body == agents_body, "CLAUDE.md と AGENTS.md の共通本文が一致しない"
 
 
 def test_repository_task_skills_in_sync_and_valid_yaml() -> None:

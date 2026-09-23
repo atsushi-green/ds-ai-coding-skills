@@ -5,22 +5,51 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# 手法別診断スキル(2段構成: ルーター SKILL.md + references/<method>.md)。
+# skill の正本は .claude/skills/ だけで、Claude Code・Copilot・Codex のいずれもここを読む。
+# Codex 向けの .agents/skills/ は正本へのシンボリックリンクなので、
+# リンクの健全性だけを別に検証する。
+DIAGNOSTICS_ROUTERS: dict[str, list[str]] = {
+    "statistical-inference-diagnostics": [
+        "ols",
+        "glm",
+        "mixed-effects",
+        "hypothesis-test",
+        "survival",
+        "bayesian-mcmc",
+    ],
+    "predictive-modeling-diagnostics": [
+        "ml-evaluation",
+        "tree-model",
+        "model-interpretation",
+        "time-series",
+    ],
+    "causal-inference-diagnostics": [
+        "ab-test",
+        "causal-observational",
+        "causal-quasi-experimental",
+    ],
+    "unsupervised-eda-diagnostics": [
+        "missing-data",
+        "clustering",
+        "dimensionality-reduction",
+        "anomaly-detection",
+    ],
+    "simulation-optimization-diagnostics": [
+        "simulation",
+        "optimization",
+    ],
+}
+DIAGNOSTICS_FILES = [
+    f"{router}/{rel}"
+    for router, refs in DIAGNOSTICS_ROUTERS.items()
+    for rel in ["SKILL.md", *[f"references/{ref}.md" for ref in refs]]
+]
+
 REQUIRED_FILES = [
-    # --- GitHub Copilot ---
+    # --- GitHub Copilot / Codex ---
     "AGENTS.md",
-    ".github/copilot-instructions.md",
-    # Copilot Skills
-    ".github/skills/python-project-ops/SKILL.md",
-    ".github/skills/safe-data-handling/SKILL.md",
-    ".github/skills/sql-analysis/SKILL.md",
-    ".github/skills/python-style/SKILL.md",
-    ".github/skills/dataframe-polars/SKILL.md",
-    ".github/skills/visualization/SKILL.md",
-    ".github/skills/path-and-io/SKILL.md",
-    ".github/skills/notebook-workflow/SKILL.md",
-    ".github/skills/statistical-ml-review/SKILL.md",
-    ".github/skills/analysis-reporting/SKILL.md",
-    # Copilot Instructions
+    # Copilot Instructions (パス別。applyTo で自動適用される Copilot 固有の入口)
     ".github/instructions/data.instructions.md",
     ".github/instructions/docs.instructions.md",
     ".github/instructions/notebooks.instructions.md",
@@ -48,6 +77,7 @@ REQUIRED_FILES = [
     ".claude/skills/notebook-workflow/SKILL.md",
     ".claude/skills/statistical-ml-review/SKILL.md",
     ".claude/skills/analysis-reporting/SKILL.md",
+    ".claude/skills/analysis-reporting/references/report-template.md",
     # Claude Code Task Skills (旧 commands)
     ".claude/skills/plan-analysis/SKILL.md",
     ".claude/skills/prepare-pr/SKILL.md",
@@ -58,17 +88,19 @@ REQUIRED_FILES = [
     ".claude/skills/update-agent-docs/SKILL.md",
     ".claude/skills/sync-agent-docs/SKILL.md",
     # --- 共通ドキュメント ---
+    # プロジェクト固有の知識のみを置く。作業手順・規約は skill 側が正本。
     "docs/agent/project-overview.md",
-    "docs/agent/repository-structure.md",
     "docs/agent/data-catalog.md",
     "docs/agent/metrics-and-definitions.md",
-    "docs/agent/analysis-workflow.md",
-    "docs/agent/statistical-and-ml-guidelines.md",
-    "docs/agent/validation-and-testing.md",
-    "docs/agent/reporting-guidelines.md",
-    "docs/agent/security-and-privacy.md",
-    "docs/agent/agent-behavior.md",
+    # --- 手法別診断スキル(正本のみ検証。ルーターと references の両方) ---
+    "docs/agent/diagnostics-reference-template.md",
+    *[f".claude/skills/{rel}" for rel in DIAGNOSTICS_FILES],
 ]
+
+# 他ツールの入口。正本へのリンクが外れていないかだけを見る(中身は正本側で検証済み)。
+REQUIRED_SYMLINKS: dict[str, str] = {
+    ".agents/skills": "../.claude/skills",
+}
 
 
 def main() -> None:
@@ -80,13 +112,28 @@ def main() -> None:
         if not (repo_root / filepath).exists():
             missing.append(filepath)
 
+    broken_links: list[str] = []
+    for link, target in REQUIRED_SYMLINKS.items():
+        path = repo_root / link
+        # リンクの実体と向き先だけを確認する(解決先のファイルは正本として検証済み)
+        if not path.is_symlink() or path.readlink() != Path(target):
+            broken_links.append(f"{link} -> {target}")
+
     if missing:
         print("ERROR: The following required agent documentation files are missing:")
         for m in missing:
             print(f"  - {m}")
+    if broken_links:
+        print("ERROR: The following symlinks to the canonical .claude/skills/ are broken:")
+        for b in broken_links:
+            print(f"  - {b}")
+    if missing or broken_links:
         sys.exit(1)
-    else:
-        print(f"OK: All {len(REQUIRED_FILES)} required agent documentation files exist.")
+
+    print(
+        f"OK: All {len(REQUIRED_FILES)} required agent documentation files exist "
+        f"({len(REQUIRED_SYMLINKS)} symlink(s) verified)."
+    )
 
 
 if __name__ == "__main__":
