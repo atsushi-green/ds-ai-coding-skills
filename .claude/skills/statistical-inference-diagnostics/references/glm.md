@@ -24,7 +24,7 @@
 
 | 目的変数 | 出す図 | 合格の読み方 |
 |---|---|---|
-| 二値（1 枚 4 パネル） | ROC 曲線（AUC・陽性率・n・陽性件数を併記）/ PR 曲線（陽性率を水平破線）/ キャリブレーションプロット（十分位 = `strategy="quantile"`）/ binned residual plot（予測確率の分位ビンごとの平均残差と ±2SE バンド） | 陽性率 < 10% なら PR を主に読む / 曲線が陽性率の線から明確に離れる / 対角線に沿う（S 字は過信、逆 S 字は過小）/ バンド外が 5% 程度まで。系統的な曲線は関数形の誤り |
+| 二値（1 枚 4 パネル） | ROC 曲線（AUC・陽性率・n・陽性件数を併記）/ PR 曲線（陽性率を水平破線）/ キャリブレーションプロット（十分位 = `strategy="quantile"`）/ binned residual plot（予測確率の分位ビンごとの平均残差と ±2SE バンド） | 陽性率 < 10% なら PR を主に読む / 曲線が陽性率の線から明確に離れる / 対角線に沿う（S 字は過信、逆 S 字は過小）/ バンド外のビン数が下の「必ず出す値」の基準内で、外れ方に形がない。弧や片側への連続は、件数が基準内でも関数形の誤り |
 | カウント | 観測度数 vs 期待度数（ゼロを含む rootogram か棒の重ね描き）/ deviance 残差 vs 線形予測子 | ゼロの棒が一致する / 無構造 |
 | 連続（ガンマ・逆ガウス） | deviance 残差 vs 線形予測子 + 残差 Q-Q / ビン別の平均 vs 分散（両対数） | 無構造・直線上 / 分散関数の仮定どおり（ガンマは分散 ∝ 平均² なので傾き 2 付近） |
 
@@ -41,12 +41,15 @@
 | 二値 | EPV（少数クラスの件数 / 説明変数の数） | ≥ 10 | 変数削減・正則化。図を描く前にここで止める |
 | 二値 | AUC・PR-AUC（+ 陽性率・n・陽性件数） | 文脈依存。必ず並べて報告 | 陽性率 < 10% なら PR-AUC を主指標に |
 | 二値 | Brier score | ベースライン `p(1-p)`（p = 陽性率）より小さい | Platt / Isotonic 較正（学習に使っていないデータで） |
+| 二値 | binned residual のバンド外ビン数（K ビン中） | Binomial(K, 0.05) の上側 5% 点以下（10 ビンなら 2、20 ビンなら 3、30 ビンなら 4 まで） | 連続変数の非線形項（スプライン）や交互作用を検討する。件数が基準内でも、弧や片側への連続があれば同じ |
 | 二値（混同行列を出すとき） | 閾値 | 明記されている（0.5 が目的に合うか問う） | コスト・目標再現率から閾値を決める |
 | カウント | Pearson χ² / df | ≈ 1（> 1.5 で過分散の疑い） | 負の二項、準ポアソン（`.fit(scale="X2")`） |
 | カウント | 観測ゼロ数 vs 期待ゼロ数 | 乖離なし | `ZeroInflatedPoisson` / `ZeroInflatedNegativeBinomialP` |
 | カウント | 曝露量の扱い | 行ごとに曝露量が違うなら `offset=np.log(曝露量)` が入っている | 入れ忘れると係数の意味（率比）が変わる |
 
 Pearson χ² / df はカウントの過分散の目安で、個票のカウントにもそのまま使える。個票の二値データでは意味を持たないので、二値モデルの過分散の根拠にしない。
+
+binned residual のバンドは ±2SE なので、モデルが正しくても各ビンは約 5% の確率で外に出る。外れ数は Binomial(K, 0.05) とみなし、割合ではなく件数で判定する（20 ビンで「5% = 1 つまで」とすると、正しいモデルでも 26% の確率で基準を外れる）。
 
 取得例（`df` は polars。二値の目的変数 `y`、説明変数の列名リスト `cols`）。二値:
 
@@ -70,10 +73,6 @@ p = np.empty(len(y))  # 性能指標は out-of-fold の予測確率で
 for tr, te in StratifiedKFold(5, shuffle=True, random_state=0).split(Xc, y):
     p[te] = sm.GLM(y.iloc[tr], Xc.iloc[tr], family=sm.families.Binomial()).fit().predict(Xc.iloc[te])
 rate = y.mean()
-vals = {"n": len(y), "陽性件数": int(y.sum()), "陽性率": rate, "EPV": min(y.sum(), len(y) - y.sum()) / len(cols),
-        "SE_max": res.bse.max(), "AUC": roc_auc_score(y, p), "PR_AUC": average_precision_score(y, p),
-        "Brier": brier_score_loss(y, p), "Brier_baseline": rate * (1 - rate), "VIF_max": max(vif)}
-print(pl.DataFrame({"項目": list(vals), "値": list(vals.values())}, strict=False))  # int・float・文字列が混ざっても落ちない
 frac_pos, mean_pred = calibration_curve(y, p, n_bins=10, strategy="quantile")  # 等幅ビンが既定なので quantile を明示
 # binned residual plot 用: 予測確率の分位ビンごとの平均残差と ±2SE（SE は p(1-p) 由来）
 binned = (pl.DataFrame({"p": p, "r": y.to_numpy() - p})
@@ -81,6 +80,12 @@ binned = (pl.DataFrame({"p": p, "r": y.to_numpy() - p})
           .group_by("bin").agg(p=pl.col("p").mean(), resid=pl.col("r").mean(),
                                se2=2 * ((pl.col("p") * (1 - pl.col("p"))).mean() / pl.len()).sqrt())
           .sort("bin"))  # resid を p に対して散布し、±se2 を折れ線で重ねる
+vals = {"n": len(y), "陽性件数": int(y.sum()), "陽性率": rate, "EPV": min(y.sum(), len(y) - y.sum()) / len(cols),
+        "SE_max": res.bse.max(), "AUC": roc_auc_score(y, p), "PR_AUC": average_precision_score(y, p),
+        "Brier": brier_score_loss(y, p), "Brier_baseline": rate * (1 - rate), "VIF_max": max(vif),
+        "binned_bins": binned.height,  # K。基準の件数は K で変わる
+        "binned_out": binned.filter(pl.col("resid").abs() > pl.col("se2")).height}  # バンド外のビン数
+print(pl.DataFrame({"項目": list(vals), "値": list(vals.values())}, strict=False))  # int・float・文字列が混ざっても落ちない
 ```
 
 カウント（`cnt` は件数の Series、曝露量 `expo` は全て正で `cnt` と同じ行順）:
