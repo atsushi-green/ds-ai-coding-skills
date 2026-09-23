@@ -3,7 +3,7 @@ name: simulation-optimization-diagnostics
 description: >-
   シミュレーションと数理最適化（モンテカルロ / Monte Carlo / 離散事象シミュレーション / DES / 待ち行列 / リスク分析 /
   シナリオ分析、線形計画 / LP / 整数計画 / MIP / スケジューリング / 配送計画 / VRP / 割当 / メタヒューリスティクス）を
-  実行したら必ずセットで出す図と値のルーター。default_rng, SeedSequence, np.random, scipy.stats.rvs, simpy, SALib,
+  実行したら必ずセットで出す図と値のルーター。SeedSequence.spawn, scipy.stats の rvs, simpy, SALib,
   pulp, LpProblem, mip.Model, ortools, pywraplp, cp_model, pyomo, cvxpy, linprog, milp がコードに現れたとき、または
   ユーザーが「シミュレーションして」「モンテカルロで見積もって」「待ち時間をシミュレートして」「最適化して」
   「最適な割当を求めて」「スケジュールを組んで」と言ったときに使う。収束・標準誤差・ソルバー status・制約違反・
@@ -18,7 +18,8 @@ description: >-
 
 ## 使い方（この順で）
 
-1. 下のルーティング表で、これから書く（またはコードにある）手法の行を見つける。複数該当なら全部（例: シミュレーションで評価しながら最適化 → 両方）
+1. 下のルーティング表で、**ユーザーが指示した手法**（指示がなければ分析の主目的になる手法 1 つ）の行を見つける。複数の行を読むのは、手法を組み合わせるとき（例: シミュレーションで評価しながら最適化 → 両方）と、ユーザーが比較を指示したときだけ
+   - 反復試行の出力分布そのもの、または最適解そのものが分析の目的のときだけ該当に数える。他の手法の中で使う乱数（`default_rng` / `np.random` による順列・ブートストラップ・サブサンプル・CV の分割）や、推定の部品としての `scipy.optimize.minimize`（最尤法など）は、コードに現れても該当に数えない
 2. その行の `references/<手法>.md` を**読んでから**実装する（読まずに回さない）
 3. 図を保存し、報告に「出力と報告」の判定表を載せる
 
@@ -26,8 +27,8 @@ description: >-
 
 | 手法 | トリガー語彙（コード / 日本語） | 読むファイル |
 |---|---|---|
-| モンテカルロ・離散事象シミュレーション・感度分析 | `default_rng` `SeedSequence` `np.random` `scipy.stats.*.rvs` `simpy` `SALib` `sobol` / 反復、乱数、待ち行列、リスク | `references/simulation.md` |
-| LP / MIP / CP・非線形最適化・メタヒューリスティクス | `pulp` `LpProblem` `mip.Model` `pywraplp` `cp_model` `pyomo` `cvxpy` `linprog` `milp` `minimize` / 最適化、割当、スケジュール、配送 | `references/optimization.md` |
+| モンテカルロ・離散事象シミュレーション・感度分析 | `SeedSequence.spawn` `scipy.stats.*.rvs` `simpy` `SALib` `sobol` / モンテカルロ、反復試行、待ち行列、リスク | `references/simulation.md` |
+| LP / MIP / CP・非線形最適化・メタヒューリスティクス | `pulp` `LpProblem` `mip.Model` `pywraplp` `cp_model` `pyomo` `cvxpy` `linprog` `milp` / 最適化、割当、スケジュール、配送 | `references/optimization.md` |
 
 ## 隣接する手法（このルーターでは扱わない）
 
@@ -56,11 +57,12 @@ description: >-
 - 「平均」「最適値」の 1 つの数字で終わらない。分布・裾・標準誤差、ソルバー status・制約の再検証・現行比の改善率が揃うまで未完了
 - 入力（分布・係数・制約）の根拠を書く。根拠のない入力で出した結果は「仮定の下の試算」と明記する
 - 小さな問題で解析解・厳密解・保存則と突き合わせてから本番規模に進む（実装バグの検出）
+- 次アクションに書いた別の手法（「メタヒューリスティクスでも解く」など）は報告上の提案であり、ユーザーの指示なしに実行しない。指示されていない手法の図を混ぜると、どの結果を採用したのかが読み手に伝わらない
 - 判定表をコードで生成しない。基準ごとの if 分岐や解釈・次アクションの文章をスクリプトに埋め込むと、分析コードが報告文で膨らみ、人間の判断を自動化したように見せてしまう（前提が崩れたら処理を止める `assert` は別）
   ```python
   # NG: 判定と次アクションをコードの分岐で組み立てる
   verdict = "OK" if ci_half < 0.5 else "要対処"
   # OK: 値を表で出すだけ。判定と次アクションは報告に書く
   vals = {"mean": mean, "mcse": mcse, "ci_half": ci_half}
-  print(pl.DataFrame({"項目": list(vals), "値": list(vals.values())}))
+  print(pl.DataFrame({"項目": list(vals), "値": list(vals.values())}, strict=False))  # int・float・文字列が混ざっても落ちない
   ```

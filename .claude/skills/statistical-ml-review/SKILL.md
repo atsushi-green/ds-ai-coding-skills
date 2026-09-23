@@ -35,12 +35,12 @@ against the outputs. Trigger vocabulary (library / class / function names) is li
 | Logistic / Poisson / negative binomial, GLM | same | `references/glm.md` |
 | Mixed effects, panel fixed effects | same | `references/mixed-effects.md` |
 | Hypothesis tests (t / χ² / ANOVA / nonparametric) | same | `references/hypothesis-test.md` |
-| Kaplan-Meier, Cox | same | `references/survival.md` |
-| MCMC (cmdstanpy / PyMC) | same | `references/bayesian-mcmc.md` |
+| Kaplan-Meier, Cox, AFT, competing risks | same | `references/survival.md` |
+| MCMC (cmdstanpy) | same | `references/bayesian-mcmc.md` |
 | Supervised ML evaluation (splits, CV, tuning, leakage) | [predictive-modeling-diagnostics](.claude/skills/predictive-modeling-diagnostics/SKILL.md) | `references/ml-evaluation.md` |
 | Decision tree, random forest, GBDT | same | `references/tree-model.md` |
 | SHAP, permutation importance, PDP / ICE | same | `references/model-interpretation.md` |
-| ARIMA / state space / Prophet, forecasting | same | `references/time-series.md` |
+| ARIMA / state space / Prophet / VAR, change points, forecasting | same | `references/time-series.md` |
 | A/B test | [causal-inference-diagnostics](.claude/skills/causal-inference-diagnostics/SKILL.md) | `references/ab-test.md` |
 | Propensity score, IPW, DML | same | `references/causal-observational.md` |
 | DiD, IV, RDD, synthetic control | same | `references/causal-quasi-experimental.md` |
@@ -53,7 +53,7 @@ against the outputs. Trigger vocabulary (library / class / function names) is li
 
 ## Review Procedure
 
-1. List every method applied (search the code for the library calls named in each router's description and routing table).
+1. List every method applied as an analysis in its own right (search the code for the library calls named in each router's description and routing table). Do not count helper usages that the routers exclude — e.g. a PCA projection inside a clustering figure, a propensity-score `LogisticRegression`, `smf.ols` used to estimate an event study, random numbers for permutation or bootstrap baselines. Within one reference, check only the rows for the method actually used; a missing figure for a method that was not used is not a gap.
 2. For each method, compare the outputs with the reference's 「必ず出す図」「必ず出す値」 and 「落とし穴」, and the router's 「出力と報告」 format.
 3. Check that the report contains the 診断サマリー table (`| 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |`) and that every `要対処` has a next action.
 4. Report gaps as a table, in Japanese:

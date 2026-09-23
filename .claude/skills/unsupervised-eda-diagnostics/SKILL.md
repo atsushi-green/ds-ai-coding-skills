@@ -19,7 +19,8 @@ description: >-
 
 ## 使い方（この順で）
 
-1. 下のルーティング表で、これから書く（またはコードにある）手法の行を見つける。複数該当なら全部（例: PCA → k-means なら `dimensionality-reduction` + `clustering`）
+1. 下のルーティング表で、**ユーザーが指示した手法**（指示がなければ分析の主目的になる手法 1 つ）の行を見つける。複数の行を読むのは、手法を直列に使うとき（例: PCA で圧縮してから k-means → `dimensionality-reduction` + `clustering`）と、ユーザーが手法の比較を指示したときだけ
+   - 他の手法の診断図や前処理の部品として使うだけの処理は、コードに現れても該当に数えない。例: クラスタ診断図のための PCA 2 次元射影、UMAP の前に 50 次元へ落とす PCA、5% 以下の欠測行の除外、順列・サブサンプル・ブートストラップの乱数
 2. その行の `references/<手法>.md` を**読んでから**分析を実行する（読まずに当てはめない）
 3. 図を保存し、報告に「出力と報告」の判定表を載せる
 
@@ -27,10 +28,12 @@ description: >-
 
 | 手法 | トリガー語彙（コード / 日本語） | 読むファイル |
 |---|---|---|
-| 欠測・外れ値・EDA 前処理（削除 / 代入 / 多重代入、分布・相関の確認） | `fillna` `dropna` `isna` `fill_null` `drop_nulls` `SimpleImputer` `IterativeImputer` `KNNImputer` `MICEData` `missingno` / 欠損、補完、外れ値 | `references/missing-data.md` |
+| 欠測・外れ値・EDA 前処理（削除 / 代入 / 多重代入、分布・相関の確認）。代入する / 行の除外で n の 5% 超を失う / 目的変数が欠測 / 欠測・外れ値の処理か EDA を指示された、のいずれかのときだけ | `fillna` `dropna` `fill_null` `drop_nulls` `SimpleImputer` `IterativeImputer` `KNNImputer` `MICEData` `missingno` / 欠損、補完、外れ値 | `references/missing-data.md` |
 | クラスタリング（k-means・階層・GMM・DBSCAN） | `KMeans` `AgglomerativeClustering` `DBSCAN` `HDBSCAN` `GaussianMixture` `silhouette_score` `linkage` `dendrogram` / セグメント、グループ分け | `references/clustering.md` |
-| 次元削減・因子分析・埋め込み（PCA・EFA・CFA / SEM・UMAP・t-SNE） | `PCA` `FactorAnalysis` `FactorAnalyzer` `calculate_kmo` `TSNE` `umap.UMAP` `semopy` `TruncatedSVD` / 主成分、潜在因子、2 次元に落とす | `references/dimensionality-reduction.md` |
+| 次元削減・因子分析・埋め込み（PCA・EFA・CFA / SEM・UMAP・t-SNE）。次元削減そのものが目的のときだけ（診断図の射影・前処理の PCA は除く） | `PCA` `FactorAnalysis` `FactorAnalyzer` `calculate_kmo` `TSNE` `umap.UMAP` `semopy` `TruncatedSVD` / 主成分、潜在因子、2 次元に落とす | `references/dimensionality-reduction.md` |
 | 異常検知・外れ値検知（教師なし / ラベル少数） | `IsolationForest` `LocalOutlierFactor` `OneClassSVM` `EllipticEnvelope` `pyod` `score_samples` `contamination` / 異常、不正 | `references/anomaly-detection.md` |
+
+5% 以下の欠測行を落とすだけなら `missing-data.md` は読まず、落とした件数を親の手法の報告（除外後の n）に書く。
 
 ## 隣接する手法（このルーターでは扱わない）
 
@@ -52,13 +55,14 @@ description: >-
 
 | 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |
 |---|---|---|---|---|
-| シルエット平均 (k=4) | 0.18（帰無 95% = 0.30） | 帰無ベースラインを上回る | 要対処 | 構造なしの可能性。GMM の BIC と DBSCAN で再確認し、特徴量を見直す |
+| シルエット平均 (k=4) | 0.18（帰無 95% = 0.30） | 帰無ベースラインを上回る | 要対処 | この特徴量では構造なしと報告。特徴量の見直しか GMM / DBSCAN の試行を提案する |
 | リストワイズ削除で失う n | 31% | 報告 | 要対処 | MICE（m=20）に切替 |
 
 ## 全手法共通の落とし穴
 
 - 標準化は中立な前処理ではなく「どの変数を対等に扱うか」という重み付けの決定である。距離ベースの手法（k-means・LOF・PCA）にかける前に決めて報告に書く。単位が違うまま入れれば分散の大きい変数だけで結果が決まり、歪んだ変数は先に log 変換する
-- 「クラスタに名前を付けた」「上位 k 件を出した」で終わらない。安定性（seed / 手法間）と、人間が確認できる形（プロファイル表・z スコア）まで出す
+- 「クラスタに名前を付けた」「上位 k 件を出した」で終わらない。安定性（seed / サブサンプル）と、人間が確認できる形（プロファイル表・z スコア）まで出す
+- 次アクションに書いた別の手法（「GMM でも確認」など）は報告上の提案であり、ユーザーの指示なしに当てはめない。指示されていない手法の図を混ぜると、どの結果を採用したのかが読み手に伝わらない
 - 「構造が見つからなかった」は失敗ではなく結論である。帰無ベースライン（列ごと順列・乱数固有値・単純法）に勝てなかったなら、勝てなかったと報告する
 - 教師なしの出力（クラスタ ID・主成分・異常スコア）を後段の教師あり学習の特徴量にするなら、CV の分割の内側で作る。全データで作ってから分割するとリークする（`predictive-modeling-diagnostics` の `references/ml-evaluation.md`）
 - 生データは変更しない。除外・変換・代入は件数付きで操作ログに残し、派生データとして保存する
@@ -68,5 +72,5 @@ description: >-
   verdict = "OK" if sil > 0.25 else "要対処"
   # OK: 値を表で出すだけ。判定と次アクションは報告に書く
   vals = {"silhouette": sil, "ari_seed": ari, "min_cluster_share": min_share}
-  print(pl.DataFrame({"項目": list(vals), "値": list(vals.values())}))
+  print(pl.DataFrame({"項目": list(vals), "値": list(vals.values())}, strict=False))  # int・float・文字列が混ざっても落ちない
   ```
