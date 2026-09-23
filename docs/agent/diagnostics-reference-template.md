@@ -14,6 +14,7 @@
 3. ルーター SKILL.md の「ルーティング表」に 1 行足す（手法名 / トリガー語彙（コードと日本語）/ 読むファイル）。ルーターの frontmatter `description` にも手法名とコード語彙を数語足す（1024 文字以内）。トリガー語彙には他の手法の中でも使う汎用 API（`np.random`・`default_rng`・`.sample(`・`groups=`・`minimize`・`scipy.stats` など）を入れない
 4. 他ファイルへの参照（`docs/`、`src/`、他 skill のパス）を書かない。ディレクトリ単体で別リポジトリにコピーしても意味が通ること
 5. `scripts/validate_agent_docs.py` の `DIAGNOSTICS_ROUTERS` に追加し、`README.md` の一覧表を更新する
+6. 発火テストのケースを足す。`scripts/skill_eval/cases.yaml` の `variants` に新しい reference（表で分岐するなら表の 1 列目の各行）を宣言し、それを `covers` に持つケースを 1 件以上書く。`tests/test_skill_eval.py` が references の表と `variants` を照合するので、足し忘れると CI の pytest が落ちる。実際に発火するかは `uv run python scripts/run_skill_eval.py run --only <ケース id>` で確かめる（`claude -p` を起動するので費用がかかる。詳細は `scripts/skill_eval/README.md`）
 
 ## 新しいルーターを作る手順
 
@@ -21,6 +22,7 @@
 2. `description` には (1) 家族の手法名を日英両方 (2) ライブラリ・クラス・関数名 (3) 診断に言及がなくても適用する明示 (4) 隣接ルーターの境界、の 4 点を入れる
 3. 既存ルーターの「隣接する手法」表に新ルーターの行を足す
 4. `scripts/validate_agent_docs.py` の `DIAGNOSTICS_ROUTERS` に追加する（Copilot・Codex は `.claude/skills/` をそのまま読むので、他陣営へのコピーやリンクは不要）
+5. 配下の references について、上の「手法を追加する手順」の 6（発火テストのケース）を行う
 
 ## reference ファイルの雛形
 

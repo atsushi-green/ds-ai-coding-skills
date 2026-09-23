@@ -1,0 +1,767 @@
+# *-diagnostics skill の発火テストのケース定義。
+#
+# prompt はユーザーが実際に打ちそうな文面にし、skill 名・references 名・分析に使うライブラリ名は書かない
+# （書くと発火のテストにならない。ライブラリの選択まで skill が導けるかも見たい）。手法名（t 検定・k-means など）は書いてよい。
+# Titanic 以外の題材データは datasets に名前を書くと、ハーネスが sandbox の data/raw/<name>.csv に置く
+# （生成方法は datasets.py。プロンプトに「lifelines 同梱の」「numpy で作って」と書かずに済む）。
+# expect.references は `glm` のような短い名前で書ける（`<skill>/references/<name>.md` に解決される）。
+# references を書けば、その skill（ルーター）も読まれるべきものとして自動で期待に入る。
+# forbid は fnmatch のパターンも書ける（例: skills: ["*-diagnostics"]）。
+#
+# kind:
+#   explicit  手法を名指しする
+#   implicit  手法を言わず、目的だけを言う
+#   scope     部品として使う手法で、別の references まで読まないか（過不足なく）
+#   negative  診断 skill が発火しないはず
+#
+# tags: slow は既定で除外（--include-slow か --only で実行）。
+#       core は最初に作った基本セット（各 references に 1〜2 件 + 否定）。--core で core だけを実行する。
+
+config:
+  claude_bin: claude
+  model: null # null なら claude の既定。比較するときは --model で上書き
+  effort: null
+  max_budget_usd: 5
+  timeout_min: 40
+  permission_mode: acceptEdits
+  # acceptEdits はファイル編集だけを自動許可する。Bash は下の許可リストに無いものを拒否し、
+  # 拒否されたツールはレポートの「権限で拒否」に出る。足りなければここに足す
+  allowed_tools:
+    - Skill
+    - Agent
+    - "Bash(uv *)"
+    - "Bash(python *)"
+    - "Bash(python3 *)"
+    - "Bash(ls *)"
+    - "Bash(ls)"
+    - "Bash(pwd)"
+    # `cd "$PWD"; ls ...` のような cd 始まりの複合コマンドが多い（1 回目の実行で拒否が頻発した）
+    - "Bash(cd *)"
+    - "Bash(cd)"
+    - "Bash(cat *)"
+    - "Bash(head *)"
+    - "Bash(tail *)"
+    - "Bash(wc *)"
+    - "Bash(find *)"
+    - "Bash(grep *)"
+    - "Bash(sed -n *)"
+    - "Bash(mkdir *)"
+    - "Bash(cp *)"
+    - "Bash(echo *)"
+    - "Bash(which *)"
+    - "Bash(date *)"
+    - "Bash(file *)"
+    - "Bash(du *)"
+    - "Bash(dot *)"
+    - "Bash(rsvg-convert *)"
+    - "Bash(git status*)"
+    - "Bash(git diff*)"
+    - "Bash(git log*)"
+  # 対話できないので質問ツールは外す。skill の本文だけで完結するか見るため Web も外す
+  disallowed_tools:
+    - AskUserQuestion
+    - WebFetch
+    - WebSearch
+    - "Bash(git push*)"
+    - "Bash(git commit*)"
+  # 無人実行のための追記。skill・手法・診断には一切触れないこと（触れると発火のテストにならない）
+  append_system_prompt: |
+    これは無人の自動実行です。ユーザーに確認質問はできません。判断が必要な点は妥当な仮定を置いて最後まで実行し、
+    置いた仮定は最終報告に書いてください。作業ディレクトリの外にはファイルを書かないでください。
+  extra_args: ["--permission-prompts", "none"]
+  # sandbox にコピーするもの。scripts/diagnostics_demo（正解の実装）や outputs/ はコピーしない
+  copy:
+    - .claude
+    - CLAUDE.md
+    - README.md
+    - pyproject.toml
+    - uv.lock
+    - .python-version
+    - .gitignore
+    - src
+    - docs/agent
+  data_files:
+    - data/raw/train.csv
+
+# references の中で、手法・条件によって「必ず出す図」が分かれる分岐。キーは references のファイル名（拡張子なし）。
+# 各ケースの covers でどの分岐を試すかを書き、すべての分岐が少なくとも 1 ケースで試されていることをテストで確かめる。
+# 「必ず出す図」を表で書いている references は、表の 1 列目をそのまま分岐名にする（行を足すとテストが落ちて気づける）。
+# 箇条書きで分岐している references は、条件（「〜の場合」「〜なら」）を読んで手で書く。
+variants:
+  ols: [OLS・WLS, 正則化（Lasso / Ridge / ElasticNet）, 分位点回帰]
+  glm: [二値（1 枚 4 パネル）, カウント, 連続（ガンマ・逆ガウス）]
+  mixed-effects: [混合効果（mixedlm）, 固定効果（PanelOLS / pyfixest）]
+  hypothesis-test: [連続量, 比率・分割表, 対応あり, 比較が複数, 二元配置 ANOVA]
+  survival: [ログランク検定（群比較）, Cox, AFT, 競合リスクがある場合]
+  bayesian-mcmc: [階層モデル]
+  ml-evaluation: [分類, 回帰, 確率を使う場合, 予測区間・予測集合を出す場合]
+  tree-model: [単一木, RF, GBDT]
+  model-interpretation: [permutation importance, SHAP, PDP / ICE / ALE]
+  time-series: [モデルを当てはめた場合, 予測する場合, VAR の場合, 変化点を検出する場合]
+  ab-test: [二値指標, 連続・カウント指標, 多群・多指標の場合]
+  causal-observational:
+    - 二値処置（手法を問わず）
+    - マッチング / IPW / 層別（重みかマッチで群を揃える手法）
+    - マッチング
+    - IPW
+    - 連続処置（DML など）
+    - CATE を出す場合
+  causal-quasi-experimental: [DiD, イベントスタディ, IV, RDD, 合成コントロール]
+  missing-data:
+    - 欠測
+    - 欠測（欠測のある列が 2 つ以上のときだけ）
+    - 代入
+    - 外れ値
+    - EDA（分布・相関の確認を指示されたとき）
+  clustering: [k-means / k-medoids, GMM, 階層, DBSCAN / HDBSCAN]
+  dimensionality-reduction: [PCA, EFA, CFA / SEM, UMAP / t-SNE]
+  anomaly-detection: [Isolation Forest, LOF, 時系列なら]
+  simulation: [モンテカルロ, DES, 感度分析を行う場合のみ, シナリオを比較する場合のみ]
+  optimization: [LP, MIP / CP の場合のみ, メタヒューリスティクス]
+
+cases:
+  # ================================================================ statistical-inference
+  # ---------------------------------------------------------------- ols
+  - id: ols-explicit
+    kind: explicit
+    tags: [core]
+    prompt: |
+      data/raw/train.csv（Titanic の乗客データ）で、運賃 Fare を客室等級・性別・年齢・同乗家族数で説明する
+      重回帰をして、どの変数がどれくらい効いているか教えて。
+    expect: {references: [ols]}
+    covers: {ols: [OLS・WLS]}
+
+  - id: ols-lasso
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で、運賃 Fare を客室等級・性別・年齢・同乗家族数・乗船港などの候補から
+      Lasso で変数を絞り込みつつ回帰して、効いている変数を教えて。
+    expect: {references: [ols]}
+    covers: {ols: [正則化（Lasso / Ridge / ElasticNet）]}
+    note: 係数の解釈が目的なので ols。汎化性能も報告するなら ml-evaluation を併読してよい（禁止しない）
+
+  - id: ols-quantile
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で、運賃の中央値と上位 10% 点が、客室等級や同乗家族数によってどう変わるかを
+      分位点回帰で調べて。
+    expect: {references: [ols]}
+    covers: {ols: [分位点回帰]}
+
+  # ---------------------------------------------------------------- glm
+  - id: glm-explicit
+    kind: explicit
+    tags: [core]
+    prompt: |
+      data/raw/train.csv（Titanic）で、生存 Survived を性別・客室等級・年齢・運賃で説明するロジスティック回帰をして、
+      オッズ比で結果を教えて。
+    expect: {references: [glm]}
+    forbid: {references: [ml-evaluation]}
+    covers: {glm: [二値（1 枚 4 パネル）]}
+
+  - id: glm-implicit
+    kind: implicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）で、ほかの条件をそろえたうえで、女性であることや 1 等客室であることが
+      生き残りやすさとどれくらい関係していたかを数字で知りたい。
+    expect: {references: [glm]}
+    covers: {glm: [二値（1 枚 4 パネル）]}
+    note: 係数（オッズ比）の解釈が目的なので glm。予測性能の話はしていない
+
+  - id: glm-poisson
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で、同乗家族数（SibSp + Parch）を客室等級・年齢・乗船港で説明する
+      ポアソン回帰をして。
+    expect: {references: [glm]}
+    covers: {glm: [カウント]}
+
+  - id: glm-gamma
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）の運賃が 0 より大きい乗客について、運賃を客室等級・乗船港・同乗家族数で
+      説明するガンマ回帰（対数リンク）をして。
+    expect: {references: [glm]}
+    covers: {glm: [連続（ガンマ・逆ガウス）]}
+
+  # ---------------------------------------------------------------- mixed-effects
+  - id: mixed-ticket
+    kind: explicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）で、同じチケット番号の乗客を同行グループとみなし、グループのランダム切片を入れた
+      混合効果のロジスティック回帰で、性別と客室等級が生存に与える影響を分析して。
+    expect: {references: [mixed-effects, glm]}
+    covers: {mixed-effects: [混合効果（mixedlm）], glm: [二値（1 枚 4 パネル）]}
+    note: ルーターの例示どおり、混合効果のロジスティックは mixed-effects + glm の両方
+
+  - id: fe-panel
+    kind: explicit
+    datasets: [worker_panel]
+    prompt: |
+      data/raw/worker_panel.csv（労働者 200 人 × 6 年の賃金パネル）で、経験年数と労働時間が賃金（log_wage）と
+      どう関係しているかを、個人の固定効果を入れたパネル回帰で推定して。
+    expect: {references: [mixed-effects]}
+    forbid: {references: [causal-quasi-experimental, ols]}
+    covers: {mixed-effects: [固定効果（PanelOLS / pyfixest）]}
+    note: 処置・効果の主張が無い固定効果回帰なので causal ではなく mixed-effects
+
+  # ---------------------------------------------------------------- hypothesis-test
+  - id: htest-explicit
+    kind: explicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）で、生存者と死亡者で年齢に差があるか t 検定して。
+    expect: {references: [hypothesis-test]}
+    covers: {hypothesis-test: [連続量]}
+
+  - id: htest-implicit
+    kind: implicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の 1 等客室と 3 等客室で、運賃の分布に意味のある差はある？
+    expect: {references: [hypothesis-test]}
+    covers: {hypothesis-test: [連続量]}
+
+  - id: htest-chi2
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で、客室等級と生存の間に関連があるかを分割表の χ² 検定で調べて。
+    expect: {references: [hypothesis-test]}
+    forbid: {references: [ab-test]}
+    covers: {hypothesis-test: [比率・分割表]}
+
+  - id: htest-paired
+    kind: explicit
+    datasets: [paired_scores]
+    prompt: |
+      data/raw/paired_scores.csv は同じ受講者 60 人の研修前後のテストの点数。研修の後で点数が上がったと言えるか
+      検定して。
+    expect: {references: [hypothesis-test]}
+    covers: {hypothesis-test: [対応あり]}
+
+  - id: htest-anova2
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で、客室等級と性別によって年齢の平均に差があるかを、二元配置の分散分析で調べて。
+    expect: {references: [hypothesis-test]}
+    covers: {hypothesis-test: [連続量, 比較が複数, 二元配置 ANOVA]}
+
+  # ---------------------------------------------------------------- survival
+  - id: survival-rossi
+    kind: explicit
+    tags: [core]
+    datasets: [rossi]
+    prompt: |
+      data/raw/rossi.csv（出所者 432 人の追跡データ。week が再逮捕までの週数、arrest が再逮捕の有無）で、
+      Kaplan-Meier の生存曲線を描き、Cox 回帰で再逮捕リスクに効く要因を調べて。
+    expect: {references: [survival]}
+    covers: {survival: [Cox]}
+
+  - id: survival-logrank
+    kind: explicit
+    datasets: [rossi]
+    prompt: |
+      data/raw/rossi.csv（出所者 432 人の追跡データ。week が再逮捕までの週数、arrest が再逮捕の有無）で、
+      出所後の経済的支援（fin）の有無によって再逮捕までの時間に差があるかをログランク検定で比べて。
+    expect: {references: [survival]}
+    forbid: {references: [hypothesis-test]}
+    covers: {survival: [ログランク検定（群比較）]}
+
+  - id: survival-aft
+    kind: explicit
+    datasets: [rossi]
+    prompt: |
+      data/raw/rossi.csv（出所者 432 人の追跡データ。week が再逮捕までの週数、arrest が再逮捕の有無）で、
+      ワイブル分布の加速故障時間（AFT）モデルを当てはめて、各要因が再逮捕までの時間を何倍にするか推定して。
+    expect: {references: [survival]}
+    covers: {survival: [AFT]}
+
+  - id: survival-competing
+    kind: explicit
+    datasets: [competing_churn]
+    prompt: |
+      data/raw/competing_churn.csv は契約 800 件の追跡データ（months が観測月数、event は 0 = 観測打ち切り、
+      1 = 解約、2 = 他プランへの乗り換え）。解約と乗り換えを別々のイベントとして扱い、プランと年齢が
+      それぞれにどう効くかを分析して。
+    expect: {references: [survival]}
+    covers: {survival: [競合リスクがある場合]}
+
+  # ---------------------------------------------------------------- bayesian-mcmc
+  - id: mcmc-hier
+    kind: explicit
+    tags: [slow, core]
+    prompt: |
+      Titanic（data/raw/train.csv）の生存を、乗船港 Embarked ごとに切片が異なる階層ロジスティック回帰として
+      ベイズ推定して。
+    expect: {references: [bayesian-mcmc]}
+    covers: {bayesian-mcmc: [階層モデル]}
+    note: ライブラリは指定しない。cmdstanpy を選ぶなら CmdStan が要る（環境変数 CMDSTAN を設定してから実行）
+
+  # ================================================================ predictive-modeling
+  # ---------------------------------------------------------------- ml-evaluation
+  - id: mleval-implicit
+    kind: implicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）で乗客の生存を予測するモデルを作って、どれくらい当たるか評価して。
+    expect: {references: [ml-evaluation]}
+    covers: {ml-evaluation: [分類]}
+    note: モデルの種類は任意。木系を選べば tree-model も読むのが正しい（期待には入れない）
+
+  - id: mleval-proba
+    kind: implicit
+    prompt: |
+      Titanic（data/raw/train.csv）で乗客ごとの生存確率を出すモデルを作って、その確率をそのまま
+      確率として使ってよいかも確かめて。
+    expect: {references: [ml-evaluation]}
+    covers: {ml-evaluation: [分類, 確率を使う場合]}
+
+  - id: mleval-regression
+    kind: implicit
+    prompt: |
+      Titanic（data/raw/train.csv）で運賃を予測するモデルを作って、どれくらい当たるか評価して。
+    expect: {references: [ml-evaluation]}
+    forbid: {references: [ols]}
+    covers: {ml-evaluation: [回帰]}
+    note: 係数の解釈を求めていないので ols は読まない
+
+  - id: mleval-interval
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で運賃を予測するモデルを作り、予測値に 90% の予測区間を付けて。
+      その区間が実際にどれくらい当たっているかも確認して。
+    expect: {references: [ml-evaluation]}
+    covers: {ml-evaluation: [回帰, 予測区間・予測集合を出す場合]}
+
+  # ---------------------------------------------------------------- tree-model
+  - id: tree-single
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で決定木を使って生存を予測して、どういうルールで分かれているかを見せて。
+    expect: {references: [ml-evaluation, tree-model]}
+    covers: {tree-model: [単一木], ml-evaluation: [分類]}
+
+  - id: tree-rf
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）でランダムフォレストの生存予測モデルを作って。
+    expect: {references: [ml-evaluation, tree-model]}
+    forbid: {references: [model-interpretation]}
+    covers: {tree-model: [RF], ml-evaluation: [分類]}
+
+  - id: lgbm-explicit
+    kind: explicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）で勾配ブースティングの生存予測モデルを作って。
+    expect: {references: [ml-evaluation, tree-model]}
+    forbid: {references: [model-interpretation]}
+    covers: {tree-model: [GBDT], ml-evaluation: [分類]}
+    note: ルーターの例示どおり ml-evaluation + tree-model。説明を求めていないので model-interpretation は読まない。
+      LightGBM などの実装は指定しない
+
+  # ---------------------------------------------------------------- model-interpretation
+  - id: interp-shap
+    kind: explicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）で勾配ブースティングの生存予測モデルを作り、どの特徴量がどう予測に効いているかを
+      SHAP 値で説明して。
+    expect: {references: [ml-evaluation, tree-model, model-interpretation]}
+    covers: {model-interpretation: [SHAP], tree-model: [GBDT]}
+
+  - id: interp-permutation
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）でランダムフォレストの生存予測モデルを作り、どの特徴量が予測に重要かを
+      permutation importance で示して。
+    expect: {references: [ml-evaluation, tree-model, model-interpretation]}
+    covers: {model-interpretation: [permutation importance], tree-model: [RF]}
+
+  - id: interp-pdp
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で勾配ブースティングの生存予測モデルを作り、年齢と運賃が予測にどう効いているかを
+      部分依存プロットと ICE で見せて。
+    expect: {references: [ml-evaluation, tree-model, model-interpretation]}
+    forbid: {references: [causal-observational]}
+    covers: {model-interpretation: [PDP / ICE / ALE], tree-model: [GBDT]}
+
+  # ---------------------------------------------------------------- time-series
+  - id: ts-co2
+    kind: explicit
+    tags: [core]
+    datasets: [co2]
+    prompt: |
+      data/raw/co2.csv（マウナロアの週次 CO2 濃度、1958〜2001 年）で、トレンドと季節性を確認して、
+      向こう 2 年を予測して。
+    expect: {references: [time-series]}
+    covers: {time-series: [モデルを当てはめた場合, 予測する場合]}
+
+  - id: ts-var
+    kind: explicit
+    datasets: [macrodata]
+    prompt: |
+      data/raw/macrodata.csv（米国の四半期データ。実質 GDP・実質消費・実質投資）で、3 系列の VAR モデルを当てはめて、
+      ある系列へのショックがほかの系列にどう波及するかを見て。
+    expect: {references: [time-series]}
+    covers: {time-series: [モデルを当てはめた場合, VAR の場合]}
+
+  - id: ts-changepoint
+    kind: explicit
+    datasets: [nile]
+    prompt: |
+      data/raw/nile.csv（ナイル川の年間流量、1871〜1970 年）で、流量の水準が変わった時点を検出して。
+    expect: {references: [time-series]}
+    forbid: {references: [anomaly-detection]}
+    covers: {time-series: [変化点を検出する場合]}
+
+  # ================================================================ causal-inference
+  # ---------------------------------------------------------------- ab-test
+  - id: abtest-cvr
+    kind: scope
+    tags: [core]
+    datasets: [ab_test]
+    prompt: |
+      data/raw/ab_test.csv は、ユーザーを A（現行デザイン）と B（新デザイン）にランダムに振り分けた実験の結果
+      （1 行 1 ユーザー、converted が購入の有無）。B のデザインに切り替えるべきか判断して。
+    expect: {references: [ab-test]}
+    forbid: {references: [simulation, hypothesis-test]}
+    covers: {ab-test: [二値指標]}
+    note: 群間比較でも実験なので hypothesis-test ではなく ab-test
+
+  - id: abtest-revenue
+    kind: scope
+    datasets: [ab_revenue]
+    prompt: |
+      data/raw/ab_revenue.csv は、ユーザーを A と B にランダムに振り分けた実験の結果（1 行 1 ユーザー、revenue が
+      期間中の売上。買わなかった人は 0）。B で 1 人あたり売上が増えたか判断して。
+    expect: {references: [ab-test]}
+    forbid: {references: [hypothesis-test]}
+    covers: {ab-test: [連続・カウント指標]}
+
+  - id: abtest-multi
+    kind: explicit
+    datasets: [ab_multi]
+    prompt: |
+      data/raw/ab_multi.csv は、ユーザーを A・B・C の 3 案にランダムに振り分けた実験の結果（1 行 1 ユーザー、
+      converted が購入の有無）。どの案を採用すべきか判断して。
+    expect: {references: [ab-test]}
+    forbid: {references: [hypothesis-test]}
+    covers: {ab-test: [二値指標, 多群・多指標の場合]}
+
+  # ---------------------------------------------------------------- causal-observational
+  - id: causal-obs-ipw
+    kind: scope
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）で、1 等客室に乗っていたことが生存確率をどれだけ上げたかを、
+      傾向スコアによる逆確率重み付け（IPW）で交絡を調整して推定して。
+    expect: {references: [causal-observational]}
+    forbid: {references: [glm, ml-evaluation]}
+    covers:
+      causal-observational:
+        [二値処置（手法を問わず）, マッチング / IPW / 層別（重みかマッチで群を揃える手法）, IPW]
+    note: 傾向スコアのロジスティック回帰は部品なので glm.md は読まない
+
+  - id: causal-obs-matching
+    kind: scope
+    prompt: |
+      Titanic（data/raw/train.csv）で、1 等客室に乗っていたことの生存への効果を、傾向スコアマッチングで推定して。
+    expect: {references: [causal-observational]}
+    forbid: {references: [glm, ml-evaluation]}
+    covers:
+      causal-observational:
+        [二値処置（手法を問わず）, マッチング / IPW / 層別（重みかマッチで群を揃える手法）, マッチング]
+
+  - id: causal-obs-dml
+    kind: scope
+    prompt: |
+      Titanic（data/raw/train.csv）で、運賃（連続量）が生存確率に与える効果を、年齢・性別・同乗家族数・乗船港で
+      調整して、ダブル機械学習（DML）で推定して。
+    expect: {references: [causal-observational]}
+    forbid: {references: [tree-model, ml-evaluation, glm]}
+    covers: {causal-observational: [連続処置（DML など）]}
+    note: DML の nuisance モデル（木・GBDT）は部品なので tree-model / ml-evaluation は読まない
+
+  - id: causal-obs-cate
+    kind: implicit
+    prompt: |
+      Titanic（data/raw/train.csv）で、1 等客室に乗っていたことの生存への効果が、性別や年齢によって
+      どう違うかを推定して。
+    expect: {references: [causal-observational]}
+    covers: {causal-observational: [二値処置（手法を問わず）, CATE を出す場合]}
+
+  # ---------------------------------------------------------------- causal-quasi-experimental
+  - id: did-store
+    kind: scope
+    tags: [core]
+    datasets: [store_panel]
+    prompt: |
+      data/raw/store_panel.csv は 20 店舗 × 24 か月の月次売上（treated_store が施策を入れた店舗、
+      policy_active が施策の実施中）。施策の売上への効果を差の差で推定して。
+    expect: {references: [causal-quasi-experimental]}
+    forbid: {references: [ols, mixed-effects, simulation]}
+    covers: {causal-quasi-experimental: [DiD]}
+    note: イベントスタディの回帰・固定効果は部品なので ols / mixed-effects は読まない
+
+  - id: event-study-store
+    kind: scope
+    datasets: [store_panel]
+    prompt: |
+      data/raw/store_panel.csv は 20 店舗 × 24 か月の月次売上（treated_store が施策を入れた店舗、
+      policy_active が施策の実施中）。施策の効果が導入の何か月前後にどれくらい出ているかを、イベントスタディで推定して。
+    expect: {references: [causal-quasi-experimental]}
+    forbid: {references: [ols, mixed-effects]}
+    covers: {causal-quasi-experimental: [DiD, イベントスタディ]}
+
+  - id: iv-schooling
+    kind: explicit
+    datasets: [iv_schooling]
+    prompt: |
+      data/raw/iv_schooling.csv（3000 人の教育年数・賃金・大学までの距離・都市部かどうか）で、教育年数が賃金に
+      与える効果を、大学までの距離を操作変数にして推定して。
+    expect: {references: [causal-quasi-experimental]}
+    forbid: {references: [ols]}
+    covers: {causal-quasi-experimental: [IV]}
+
+  - id: rdd-age13
+    kind: explicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の男性乗客について、年齢 13 歳を閾値にした回帰不連続デザインで、
+      「子ども扱い」されたことの生存への効果を推定して。
+    expect: {references: [causal-quasi-experimental]}
+    covers: {causal-quasi-experimental: [RDD]}
+
+  - id: synth-control
+    kind: explicit
+    datasets: [synth_panel]
+    prompt: |
+      data/raw/synth_panel.csv は 20 地域 × 30 年（1990〜2019 年）の 1 人当たり消費量。地域 1 だけが 2010 年に
+      規制を導入した。ほかの地域を組み合わせた合成コントロールで、規制の効果を推定して。
+    expect: {references: [causal-quasi-experimental]}
+    forbid: {references: [optimization]}
+    covers: {causal-quasi-experimental: [合成コントロール]}
+    note: 合成コントロールの重み推定（制約付き最適化）は部品なので optimization は読まない
+
+  # ================================================================ unsupervised-eda
+  # ---------------------------------------------------------------- missing-data
+  - id: missing-impute
+    kind: implicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の欠損を埋めて、モデリングに使える形にして data/processed に保存して。
+    expect: {references: [missing-data]}
+    covers: {missing-data: [欠測, 欠測（欠測のある列が 2 つ以上のときだけ）, 代入]}
+
+  - id: missing-outlier
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）の運賃の外れ値を確認して、どう扱うかを決めて処理して。
+    expect: {references: [missing-data]}
+    forbid: {references: [anomaly-detection]}
+    covers: {missing-data: [外れ値]}
+    note: 1 変数の外れ値処理は missing-data。異常検知モデルではないので anomaly-detection は読まない
+
+  - id: eda-dist
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）の EDA として、主要な変数の分布と変数間の相関を確認して。
+    expect: {references: [missing-data]}
+    covers: {missing-data: [EDA（分布・相関の確認を指示されたとき）]}
+
+  # ---------------------------------------------------------------- clustering
+  - id: cluster-kmeans
+    kind: scope
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の乗客を k-means でセグメントに分けて、それぞれの特徴を教えて。
+    expect: {references: [clustering]}
+    forbid: {references: [dimensionality-reduction]}
+    covers: {clustering: [k-means / k-medoids]}
+    note: クラスタ診断図の PCA 2 次元射影は部品なので dimensionality-reduction は読まない
+
+  - id: cluster-implicit
+    kind: implicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の乗客をいくつかのタイプに分類して、タイプごとの特徴を教えて。
+    expect: {references: [clustering]}
+    note: 手法は任意なので covers は書かない
+
+  - id: cluster-hier
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）の乗客を Ward 法の階層クラスタリングで分類して、それぞれの特徴を教えて。
+    expect: {references: [clustering]}
+    forbid: {references: [dimensionality-reduction]}
+    covers: {clustering: [階層]}
+
+  - id: cluster-gmm
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）の乗客を混合ガウスモデルでクラスタに分けて、それぞれの特徴を教えて。
+    expect: {references: [clustering]}
+    forbid: {references: [dimensionality-reduction]}
+    covers: {clustering: [GMM]}
+
+  - id: cluster-dbscan
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）の乗客を DBSCAN でクラスタに分けて、それぞれの特徴とノイズ扱いになった乗客の
+      傾向を教えて。
+    expect: {references: [clustering]}
+    forbid: {references: [dimensionality-reduction, anomaly-detection]}
+    covers: {clustering: [DBSCAN / HDBSCAN]}
+    note: DBSCAN のノイズ点は異常検知ではないので anomaly-detection は読まない
+
+  # ---------------------------------------------------------------- dimensionality-reduction
+  - id: dimred-pca
+    kind: explicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の数値列を主成分分析で要約して、各主成分が何を表しているか教えて。
+    expect: {references: [dimensionality-reduction]}
+    forbid: {references: [clustering]}
+    covers: {dimensionality-reduction: [PCA]}
+
+  - id: dimred-efa
+    kind: explicit
+    datasets: [survey_items]
+    prompt: |
+      data/raw/survey_items.csv（500 人が 8 問に 5 段階で答えたアンケート）で、回答の背後にある因子を
+      探索的因子分析で調べて。
+    expect: {references: [dimensionality-reduction]}
+    covers: {dimensionality-reduction: [EFA]}
+
+  - id: dimred-cfa
+    kind: explicit
+    datasets: [survey_items]
+    prompt: |
+      data/raw/survey_items.csv（500 人が 8 問に 5 段階で答えたアンケート）で、q1〜q4 が「満足度」、q5〜q8 が
+      「推奨意向」を測っているという想定を、確認的因子分析で検証して。
+    expect: {references: [dimensionality-reduction]}
+    covers: {dimensionality-reduction: [CFA / SEM]}
+
+  - id: dimred-tsne
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）の乗客を t-SNE で 2 次元に埋め込んで、どんな構造があるか見せて。
+    expect: {references: [dimensionality-reduction]}
+    forbid: {references: [clustering]}
+    covers: {dimensionality-reduction: [UMAP / t-SNE]}
+
+  # ---------------------------------------------------------------- anomaly-detection
+  - id: anomaly-iforest
+    kind: explicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）で、運賃・年齢・同乗家族数の組み合わせが普通ではない乗客を
+      Isolation Forest で検出して。
+    expect: {references: [anomaly-detection]}
+    forbid: {references: [tree-model]}
+    covers: {anomaly-detection: [Isolation Forest]}
+    note: Isolation Forest は木だが教師なしなので tree-model ではない
+
+  - id: anomaly-lof
+    kind: explicit
+    prompt: |
+      Titanic（data/raw/train.csv）で、運賃・年齢・同乗家族数の組み合わせが周囲と比べて浮いている乗客を、
+      局所外れ値因子（LOF）で検出して。
+    expect: {references: [anomaly-detection]}
+    forbid: {references: [missing-data]}
+    covers: {anomaly-detection: [LOF]}
+
+  - id: anomaly-ts
+    kind: implicit
+    datasets: [co2]
+    prompt: |
+      data/raw/co2.csv（マウナロアの週次 CO2 濃度、1958〜2001 年）で、普段と違う異常な観測値がないか調べて。
+    expect: {references: [anomaly-detection]}
+    covers: {anomaly-detection: [時系列なら]}
+    note: 季節性の除去に time-series を併読するのは許容（禁止しない）
+
+  # ================================================================ simulation-optimization
+  # ---------------------------------------------------------------- simulation
+  - id: sim-queue
+    kind: explicit
+    tags: [core]
+    prompt: |
+      窓口 2 つ、客の到着は平均毎分 0.8 人のポアソン到着、サービス時間は平均 2 分の指数分布という窓口の待ち行列を
+      シミュレーションして、平均待ち時間を見積もって。
+    expect: {references: [simulation]}
+    covers: {simulation: [DES]}
+
+  - id: sim-scenario
+    kind: explicit
+    prompt: |
+      客の到着が平均毎分 0.8 人のポアソン到着、サービス時間が平均 2 分の指数分布という窓口で、窓口を 2 つから 3 つに
+      増やすと平均待ち時間がどれだけ減るかを、シミュレーションで比較して。
+    expect: {references: [simulation]}
+    covers: {simulation: [DES, シナリオを比較する場合のみ]}
+
+  - id: sim-montecarlo
+    kind: explicit
+    prompt: |
+      5 つの作業 A〜E からなるプロジェクトの工期を見積もりたい。所要日数は三角分布（最短, 最頻, 最長）で
+      A(3, 5, 10)、B(2, 4, 8)、C(4, 6, 12)、D(1, 2, 4)、E(3, 4, 7)。A の後に B と C を並行して進め、
+      B と C が両方終わったら D、D の後に E。モンテカルロで工期の分布と 90% 点を見積もって。
+    expect: {references: [simulation]}
+    covers: {simulation: [モンテカルロ]}
+
+  - id: sim-sensitivity
+    kind: explicit
+    prompt: |
+      5 つの作業 A〜E からなるプロジェクトの工期を考える。所要日数は三角分布（最短, 最頻, 最長）で
+      A(3, 5, 10)、B(2, 4, 8)、C(4, 6, 12)、D(1, 2, 4)、E(3, 4, 7)。A の後に B と C を並行して進め、
+      B と C が両方終わったら D、D の後に E。どの作業のばらつきが工期のばらつきに一番効いているかを感度分析して。
+    expect: {references: [simulation]}
+    covers: {simulation: [モンテカルロ, 感度分析を行う場合のみ]}
+
+  # ---------------------------------------------------------------- optimization
+  - id: opt-lifeboat
+    kind: explicit
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の乗客を、定員 65 人の救命ボート 20 艘に割り当てる最適化をして。
+      同じチケット番号のグループは同じボートに乗せ、女性と子どもをできるだけ優先する。
+    expect: {references: [optimization]}
+    covers: {optimization: [MIP / CP の場合のみ]}
+
+  - id: opt-lp
+    kind: explicit
+    prompt: |
+      工場で製品 X・Y・Z を作る。1 単位あたりの利益は X 40 円、Y 30 円、Z 50 円。必要な材料は X 2 kg、Y 1 kg、
+      Z 3 kg で、材料は 1 日 100 kg まで。機械時間は X 1 時間、Y 2 時間、Z 1 時間で、1 日 80 時間まで。
+      Z は 1 日 20 単位までしか売れない。生産量は小数でもよいとして、1 日の利益が最大になる生産量を求めて。
+    expect: {references: [optimization]}
+    covers: {optimization: [LP]}
+
+  - id: opt-metaheuristic
+    kind: explicit
+    datasets: [cities]
+    prompt: |
+      data/raw/cities.csv の 40 地点をすべて 1 回ずつ回って出発点に戻る最短の巡回路を、焼きなまし法で求めて。
+    expect: {references: [optimization]}
+    forbid: {references: [simulation]}
+    covers: {optimization: [メタヒューリスティクス]}
+    note: 焼きなまし法の乱数はシミュレーションではない
+
+  # ================================================================ negative
+  - id: neg-barchart
+    kind: negative
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の客室等級ごとの乗客数を棒グラフにして outputs/figures に保存して。
+    forbid: {skills: ["*-diagnostics"], references: ["*"]}
+
+  - id: neg-column-summary
+    kind: negative
+    tags: [core]
+    prompt: |
+      Titanic（data/raw/train.csv）の列ごとの型・欠損数・ユニーク数を一覧表にして。
+    forbid: {skills: ["*-diagnostics"], references: ["*"]}
+    note: 欠損を数えるだけで処理（補完・除外）も EDA の指示もしていないので missing-data は発火しない想定。境界ケース
