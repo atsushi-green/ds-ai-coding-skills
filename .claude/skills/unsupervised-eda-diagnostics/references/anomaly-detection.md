@@ -17,7 +17,7 @@
 - 異常スコアのヒスト（閾値に縦破線、対数 y 軸可） — 閾値が分布の切れ目にあれば合格。切れ目がなければ閾値は業務要件で決めたと明記
 - 上位 k 件の特徴量表 or ヒートマップ（各特徴の z スコアで色付け） — 「なぜ異常か」が各行で読めること。読めない報告は使えない
 - 単純ベースライン（z スコア / IQR / Mahalanobis）との上位集合の重なり（ベン図 or Jaccard 表） — 複雑手法が単純法と大きく違うなら理由を説明できること
-- contamination を 0.5 / 1 / 2 / 5% と変えたときの上位集合の一致（感度分析） — 件数を変えても上位の顔ぶれが大きく崩れなければ合格。崩れるなら検知結果は閾値の産物
+- seed とハイパラ（IsolationForest は `max_samples`、LOF は `n_neighbors`）を変えたときの上位 k 件の一致（Jaccard の表か棒。k は採用した検知件数） — 設定を変えても上位の顔ぶれが大きく崩れなければ合格。崩れるなら検知結果は設定の産物。contamination はここで振らない（下の落とし穴）
 - ラベルがあれば PR 曲線（陽性率を破線） — ラベルが少数でも PR-AUC と precision@k を出す
 - 時系列なら: 原系列に異常点を重ねた図（季節性除去後のスコアも） — 異常が季節ピークと一致していないか
 
@@ -26,26 +26,37 @@
 | 項目 | 合格基準 | 違反時の対処 |
 |---|---|---|
 | 単純ベースライン（z スコア / IQR / Mahalanobis）との比較 | 複雑手法が勝つ根拠がある | 根拠がなければ単純法を採用（説明しやすい） |
-| contamination の根拠 | ドメイン知識か過去ラベル。感度分析の図とセットで報告 | 根拠がなければ業務の確認能力から逆算し、そう明記する |
+| 検知件数（contamination）の根拠 | ドメイン知識・過去ラベル・業務の確認能力のどれかを明記 | 根拠がなければ業務の確認能力から逆算し、そう明記する |
 | 閾値の根拠 | 分布の切れ目か業務要件（確認可能な件数） | — |
 | ラベルあり: precision@k、再現率、PR-AUC | 業務の確認能力（1 日に見られる件数）に対する k で | — |
-| ラベルなし: 手法 / seed 間の上位集合 Jaccard | > 0.5 目安 | 特徴量・手法の見直し（不安定な上位は使えない） |
+| seed・ハイパラ間の上位 k 件の Jaccard（組合せの最小値） | > 0.5 目安 | 特徴量・ハイパラの見直し（不安定な上位は使えない） |
 | スケーリング | 距離ベース（LOF / OCSVM / Mahalanobis）なら方針を明記。異常を含むデータで fit する平均・SD は異常自身に引っ張られる | `RobustScaler`（median / IQR）か log。木ベース（IsolationForest）は特徴ごとの線形変換にほぼ不変なので標準化は不要 |
 | 上位 k 件の説明（各特徴の z スコア） | 全件に付いている | — |
 
-取得例（動作確認済み。`X` は数値列だけの polars DataFrame）:
+取得例（`X` は数値列だけの polars DataFrame）:
 
 ```python
+import itertools
 import numpy as np
 import polars as pl
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 
+
+def jaccard(a: set, b: set) -> float:
+    return len(a & b) / len(a | b)
+
+
 Xs = StandardScaler().fit_transform(X.to_numpy())  # scikit-learn には配列で渡す
-score = -IsolationForest(contamination=0.02, random_state=0).fit(Xs).score_samples(Xs)  # 大きいほど異常
-z_max = np.abs(Xs).max(axis=1)  # 単純ベースライン（標準化済みなので |z| の最大）
-k = int(0.02 * X.height); top_if, top_z = set(np.argsort(-score)[:k]), set(np.argsort(-z_max)[:k])
-jaccard = len(top_if & top_z) / len(top_if | top_z)  # 上位集合の一致度（> 0.5 目安）
+rate = 0.02  # 検知率。業務の確認能力などから決め、根拠を報告に書く
+k = int(rate * X.height)
+score = -IsolationForest(contamination=rate, random_state=0).fit(Xs).score_samples(Xs)  # 大きいほど異常
+top_if = set(np.argsort(-score)[:k])
+top_z = set(np.argsort(-np.abs(Xs).max(axis=1))[:k])  # 単純ベースライン（標準化済みなので |z| の最大）
+j_base = jaccard(top_if, top_z)  # 単純法との一致度
+tops = [set(np.argsort(IsolationForest(max_samples=m, random_state=s).fit(Xs).score_samples(Xs))[:k])
+        for s in range(3) for m in (128, 256)]  # score_samples は小さいほど異常
+j_setting = min(jaccard(a, b) for a, b in itertools.combinations(tops, 2))  # 設定間の一致（> 0.5 目安）
 idx = sorted(top_if)  # 説明付き（元の値 + 各特徴の z スコア）
 top_table = X.select(pl.all().gather(idx)).with_columns(
     [pl.Series(f"z_{c}", Xs[idx, i].round(1)) for i, c in enumerate(X.columns)])
@@ -61,4 +72,5 @@ top_table = X.select(pl.all().gather(idx)).with_columns(
 - 時系列なら季節性を除去してからスコアリングし、閾値のドリフト（月ごとの検知率）を確認する
 - 上位異常が「なぜ異常か」を説明できない報告は使えない（各特徴の z スコアを併記）
 - contamination を既定値（auto / 0.1）のまま使わない。検知件数を決めているのはこのパラメータ
+- contamination を振る感度分析はしない。IsolationForest・LOF・EllipticEnvelope・pyod の contamination は閾値（`offset_` / `threshold_`）を動かすだけでスコアの順位を変えないので、上位集合は必ず入れ子になり、Jaccard は件数の比で決まる（0.5% と 1% なら常に 0.5）。振るなら順位を変えるハイパラと seed
 - 「異常 = 不正」ではない。業務担当が確認するまでは「要確認」として報告する

@@ -6,6 +6,7 @@
 
 - 扱う: k-means / k-medoids、階層クラスタリング、GMM、DBSCAN / HDBSCAN、クラスタ数の選択と安定性
 - 扱わない: PCA・UMAP・t-SNE の診断 → `references/dimensionality-reduction.md` / 外れ値・異常検知 → `references/anomaly-detection.md` / トピックモデル → 未作成（今後の拡張）
+- 手法の指定がなければ、数値だけのデータは k-means、カテゴリ混在は k-prototypes（または Gower 距離 + 階層）を 1 つ選ぶ。他の手法は結果が悪いときの次アクションとして提案に留め、自分から当てはめない
 
 ## ライブラリ
 
@@ -15,9 +16,10 @@
 ## 必ず出す図（共通 4 パネル + 粒度の根拠 1〜2 パネル）
 
 共通（手法によらず出す 4 パネル）。階層はデンドログラムをカットした後（`fcluster`）のラベル、DBSCAN はノイズを除いたラベルで同じものを出す:
+シルエットは全点対の距離を使うので計算量が n²、帰無ベースラインはそれを（順列 × k）回繰り返す。**n が 2 万を超えたら**クラスタリングは全行のまま、シルエットと走査だけ層化サブサンプルで計算し、使った n を図に書く。
 
 - シルエットプロット（サンプル別、クラスタごとに帯。平均に縦破線） — 負の帯が少なく、帯の幅（n）が極端に偏らなければ合格。DBSCAN はノイズ点を除いて描き、除いた割合を図に書く。ユークリッド以外の距離（Gower・マンハッタン）でクラスタリングしたなら距離行列を渡す（`silhouette_score(D, labels, metric="precomputed")`）。クラスタリングと違う距離で評価しない
-- PCA 2 次元射影にクラスタ色付け — 「射影の重なりは高次元での分離を否定しない」と注記。射影で完全に混ざるなら構造の弱さを疑う
+- PCA 2 次元射影にクラスタ色付け — 「射影の重なりは高次元での分離を否定しない」と注記。射影で完全に混ざるなら構造の弱さを疑う。この PCA は可視化の部品なので `references/dimensionality-reduction.md` は適用しない
 - クラスタプロファイル（標準化セントロイドのヒートマップ、各クラスタの n を併記） — 各クラスタを 1 行で説明できる特徴の組合せが読めれば合格。セントロイド＝クラスタ内平均は k-means では手法の定義そのものだが、階層・DBSCAN では**後付けの要約**なので、鎖状・非凸のクラスタや外れ値を含むクラスタでは中央値 + IQR（または特徴ごとの分布の重ね描き）も併記する
 - 外部変数プロファイル（クラスタリングに**使わなかった**列との集計。目的変数があればその平均も） — 使っていない変数で差が出れば、内的評価だけでない裏付けになる。差がなければクラスタの業務的な意味は主張できない
 
@@ -31,7 +33,7 @@
 | DBSCAN / HDBSCAN | k-距離プロット（`min_samples` 番目の近傍距離を昇順に並べ、採用 eps に水平破線）+ eps を振ったときのクラスタ数とノイズ率 | 折れ点が読め、eps の小さな変化でクラスタ数・ノイズ率が急変しない |
 
 k が走査の対象にならない DBSCAN では、帰無比較は「同じ eps・min_samples を順列データに当てたときのクラスタ数とノイズ率」で行う。
-複数の手法を比べたなら該当行を全部出す（例: k-means + 階層なら共通 4 + k 走査 + デンドログラムの 6 パネル）。そのときは手法間のラベル一致（ARI）も値として報告する。
+ユーザーが複数の手法の比較を指示したときだけ、該当行を全部出す。共通 4 パネルは採用した手法のラベルで 1 組だけ描き、粒度の根拠は手法ごとに出す（例: k-means + 階層なら共通 4 + k-means の走査 + デンドログラム + 階層のシルエット走査。2 つのシルエット走査は 1 枚に重ねてよい）。そのときは手法間のラベル一致（ARI）も値として報告する。
 
 ## 必ず出す値
 
@@ -40,9 +42,9 @@ k が走査の対象にならない DBSCAN では、帰無比較は「同じ eps
 | スケーリングの方針 | 方針と理由が報告にある（単位が混在 → 標準化、全列が同一単位で分散差が情報 → 素のまま） | 歪み・外れ値が理由なら標準化では直らない。log1p か `RobustScaler` を先に使う |
 | 採用した粒度（k / カット高さ / eps）とその根拠 | 使った手法の指標で書く（k-means: シルエット最大とエルボーの整合、GMM: BIC 最小、階層: カット高さ、DBSCAN: k-距離の折れ点と `min_samples`）。業務要件で指定された値ならそう明記 | 指標が割れるなら両方の値を並べ、どちらを採用したかを理由付きで書く |
 | 帰無ベースライン（列ごと順列 20 本に同じ手法を当てる） | 実データのシルエットが帰無の 95 パーセンタイルを超える（DBSCAN はクラスタ数・ノイズ率で比較） | 超えないなら「この特徴量では構造なし」と結論する。k を増やして値を上げない |
-| シルエット平均 | > 0.25 目安（> 0.5 で明瞭）。固定閾値より上の帰無比較が主。DBSCAN はノイズ点を除いて計算し、ノイズ率を併記 | 全 k で低いなら手法（GMM / DBSCAN）かクラスタ構造の不在を疑う |
+| シルエット平均 | > 0.25 目安（> 0.5 で明瞭）。固定閾値より上の帰無比較が主。DBSCAN はノイズ点を除いて計算し、ノイズ率を併記 | 全 k で低いならクラスタ構造の不在を報告し、別の手法（GMM / DBSCAN）は次アクションとして提案する |
 | 各クラスタの n（割合） | 極小クラスタ（< 5%）に注記 | k 削減、外れ値処理（極小は外れ値の吹き溜まりであることが多い） |
-| 安定性（seed / サブサンプル / 手法間の ARI） | > 0.7 目安（階層・DBSCAN は決定的なので seed ではなくサブサンプルで見る） | 不安定なら報告し k・手法を再考。運用ルールにしない |
+| 安定性（seed / サブサンプルの ARI） | > 0.7 目安。k-means は `n_init` を増やすと seed 間の ARI がほぼ 1 になるので、サブサンプル（80% × 10 回）を主に見る。階層・DBSCAN は決定的なのでサブサンプルだけ | 不安定なら報告し k を再考。運用ルールにしない |
 | 階層: cophenetic 相関 | > 0.7 目安 | linkage（ward / average / complete）を変更 |
 | DBSCAN: ノイズ点の割合 | 報告に明記し、業務上許容できる水準か書く | 過半がノイズなら eps / `min_samples` を見直すか、密度ベースが不適と結論する |
 | k-means / GMM: `n_init` と `random_state` | `n_init ≥ 20`、seed を報告に明記 | 階層・DBSCAN は決定的なので不要。代わりに linkage 法、または eps と `min_samples` を明記する |
@@ -62,7 +64,12 @@ inertia = [fits[k].inertia_ for k in ks]  # エルボー
 sil = [silhouette_score(Xs, fits[k].labels_) for k in ks]  # n が大きいなら sample_size= を指定
 k_best = list(ks)[int(np.argmax(sil))]  # 候補。k の確定は指標だけで決めず報告側で判断する
 # k が指定されているならここを指定値にし、以降（帰無・ARI・シルエットプロット）も同じ k で計算する
-ari = adjusted_rand_score(fits[k_best].labels_, KMeans(k_best, n_init=20, random_state=1).fit_predict(Xs))  # 安定性
+labels = fits[k_best].labels_
+ari_seed = adjusted_rand_score(labels, KMeans(k_best, n_init=20, random_state=1).fit_predict(Xs))
+rng = np.random.default_rng(0)  # 安定性: 80% サブサンプルで学習し、全行に当てはめたラベルと比べる
+ari_sub = [adjusted_rand_score(labels, KMeans(k_best, n_init=20, random_state=0)
+                               .fit(Xs[rng.choice(len(Xs), int(0.8 * len(Xs)), replace=False)]).predict(Xs))
+           for _ in range(10)]
 null_sil = []  # 帰無ベースライン: 列ごとに別々に順列し、変数間の構造だけ壊す（ギャップ統計量と同じ発想）
 for s in range(20):
     rng = np.random.default_rng(s)  # rng は列間で使い回す（列ごとに作ると全列が同じ順列になる）
@@ -71,7 +78,7 @@ for s in range(20):
 # 合格判定は sil[k_best - 2] > np.percentile(null_sil, 95) を報告側で読む
 ```
 
-手法を変える場合の差分（走査とその根拠だけが変わる。共通 4 パネルと安定性はそのまま）:
+手法を変える場合の差分（走査とその根拠、安定性の取り方が変わる。共通 4 パネルはそのまま）:
 
 ```python
 from scipy.cluster.hierarchy import cophenet, fcluster, linkage
@@ -83,15 +90,18 @@ from sklearn.neighbors import NearestNeighbors
 Z = linkage(Xs, "ward")
 coph = cophenet(Z, pdist(Xs))[0]  # > 0.7 目安
 sil_h = [silhouette_score(Xs, fcluster(Z, k, "maxclust")) for k in ks]
+idx = np.random.default_rng(0).choice(len(Xs), int(0.8 * len(Xs)), replace=False)  # 決定的なので安定性はサブサンプルで
+ari_h = adjusted_rand_score(fcluster(Z, k_best, "maxclust")[idx], fcluster(linkage(Xs[idx], "ward"), k_best, "maxclust"))
 # GMM: BIC 最小を根拠にする（シルエットも併記して食い違いを報告する）
-bic = [GaussianMixture(k, random_state=0).fit(Xs).bic(Xs) for k in ks]
-# DBSCAN: min_samples 番目の近傍距離を昇順に並べた k-距離。折れ点が eps の候補
-kdist = np.sort(NearestNeighbors(n_neighbors=5).fit(Xs).kneighbors(Xs)[0][:, -1])
+bic = [GaussianMixture(k, n_init=20, random_state=0).fit(Xs).bic(Xs) for k in ks]
+# DBSCAN: 自分自身を含めて min_samples 個目の近傍までの距離を昇順に並べた k-距離。折れ点が eps の候補
+min_samples = 5
+kdist = np.sort(NearestNeighbors(n_neighbors=min_samples).fit(Xs).kneighbors(Xs)[0][:, -1])
 ```
 
 ## 落とし穴
 
-- k-means は球状・等サイズを仮定する。全 k でシルエットが低いなら GMM・DBSCAN・「構造がない」を疑う
+- k-means は球状・等サイズを仮定する。全 k でシルエットが低いなら GMM・DBSCAN・「構造がない」を疑う（別の手法を試すのは提案に留める）
 - シルエットも凸・等方なクラスタを前提にした指標なので、鎖状・非凸の構造では正しく分かれていても低く出る（two moons で single linkage は ARI 1.00 / シルエット 0.33、Ward は ARI 0.24 / シルエット 0.48）。手法・linkage の優劣をシルエットだけで決めない。同じ手法の中で k を比べる、帰無ベースラインと比べる、の 2 つに用途を限る
 - 「スケールが違う ＝ 標準化する」ではない。標準化は全変数を分散 1 に揃える＝距離への寄与を対等にする決定なので、分散の差が単位の恣意性（円・歳・回数）から来るなら揃え、分散の差そのものが情報（全列が同一単位・同一尺度。例: カテゴリ別の購買金額、同じ尺度の設問群）なら揃えない。後者で z 化すると、ほとんど動かない列のノイズが主要な列と同じ重みまで増幅される。二値ダミーの z 化も希少カテゴリの距離寄与を跳ね上げる
 - スケーリングの選び方で結論が変わるか分からないときは、両方で回して ARI を比較する。変われば「スケーリングの選択で結論が動く」こと自体が報告すべき結果で、どちらを採用したかを理由付きで書く
