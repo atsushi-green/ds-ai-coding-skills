@@ -59,3 +59,7 @@ Thumbs.db
 # ギャラリーの OGP 画像とアイコンは Pages で配信するのでコミットする
 !docs/gallery/assets/ogp.png
 !docs/gallery/apple-touch-icon.png
+# ギャラリーの図の収集・OGP 生成はメンテナの手元専用（入力のデモも除外しているので clone 先では動かない）
+scripts/gallery
+# skill 発火テストの結果（transcript に行レベルのデータが残りうる）
+outputs/skill_eval/
