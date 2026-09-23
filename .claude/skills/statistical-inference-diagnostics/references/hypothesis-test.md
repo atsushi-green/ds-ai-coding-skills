@@ -27,7 +27,8 @@ p 値は答えの一部ではなく、二値の意思決定が必要なときに
 
 ## 必ず出す図
 
-- 群別の分布（箱ひげ + 個票 strip / swarm、n を併記） — 分布の重なりが目視できること。重なりが大きいのに「差あり」と書かない
+- 連続量: 群別の分布（箱ひげ + 個票 strip / swarm、n を併記） — 分布の重なりが目視できること。重なりが大きいのに「差あり」と書かない。個票は 1 群 1,000 点が上限（swarm は超えると描画が破綻し、strip は塗り潰しになる）。超えるなら ECDF かヒストの重ね描きに替える
+- 比率・分割表: 群別の比率と 95% CI の棒（セルの n を併記）。3×3 以上なら Pearson 残差のヒートマップ — どのセルが期待度数から離れているかが読めれば合格
 - 対応ありなら個体ごとの前後を結んだ線（スパゲッティ） — 大半の線が同方向なら効果が一貫
 - 効果量と 95% CI のフォレストプロット（比較が複数ある場合。0 と最小重要差に縦破線） — CI が最小重要差を含むかで判断
 - 二元配置 ANOVA なら交互作用プロット — 線が平行なら交互作用なし
@@ -43,9 +44,10 @@ p 値は答えの一部ではなく、二値の意思決定が必要なときに
 | p 値 | **1 つだけ**（事前仮説に対して） | 複数出すなら BH 補正と補正の対象範囲を明記 |
 | 等分散の扱い | 最初から Welch | 等分散検定で検定を選ばない |
 
-取得例（動作確認済み）:
+取得例（`a`, `b` は 2 群の値の配列）:
 
 ```python
+import numpy as np
 import pingouin as pg
 import polars as pl
 # 既定は推定: 群別 n・記述統計 → 差の点推定 + 95% CI + 効果量。検定は事前仮説 1 つに 1 回だけ
@@ -55,9 +57,10 @@ desc = (pl.DataFrame({"群": ["a"] * len(a) + ["b"] * len(b), "値": np.concaten
                             median=pl.col("値").median(),
                             q1=pl.col("値").quantile(0.25, interpolation="linear"),
                             q3=pl.col("値").quantile(0.75, interpolation="linear")))
-res = pg.ttest(a, b, correction=True)  # Welch を最初から。CI95, cohen_d, p_val を 1 行で返す（pingouin ≥ 0.6 の列名）
+res = pg.ttest(a, b, correction=True)  # Welch を最初から。CI95, p_val を 1 行で返す（pingouin ≥ 0.6 の列名）
 diff, diff_ci = np.mean(a) - np.mean(b), res["CI95"].iloc[0]  # 差の点推定と 95% CI（p 値より先に書く）
-d, d_ci = res["cohen_d"].iloc[0], pg.compute_bootci(a, b, func="cohen", n_boot=2000, seed=0)  # 効果量 + CI
+d = pg.compute_effsize(a, b, eftype="cohen")  # 符号付き（a − b）。ttest の cohen_d は絶対値で、CI と向きが合わない
+d_ci = pg.compute_bootci(a, b, func="cohen", n_boot=2000, seed=0)  # 効果量の 95% CI（符号付き）
 ```
 
 ## 落とし穴

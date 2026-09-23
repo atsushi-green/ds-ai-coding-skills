@@ -15,7 +15,7 @@
 
 ```python
 from cmdstanpy import CmdStanModel
-import arviz as az  # 1.x（動作確認: 1.3）
+import arviz as az  # 1.x
 
 fit = CmdStanModel(stan_file="model.stan").sample(
     data=data, chains=4, iter_warmup=1000, iter_sampling=2000, adapt_delta=0.9, seed=0
