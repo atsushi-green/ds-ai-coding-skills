@@ -6,6 +6,7 @@
 
 - 扱う: DiD / イベントスタディ、IV / 2SLS、RDD（sharp / fuzzy）、合成コントロール
 - 扱わない: 傾向スコア・IPW・DML → `references/causal-observational.md` / ランダム化実験 → `references/ab-test.md` / パネルの分散成分そのもの → `statistical-inference-diagnostics`（`references/mixed-effects.md`）
+- 推定に `smf.ols` / `PanelOLS` / `feols` / `IV2SLS` を使っても、`statistical-inference-diagnostics` の ols / mixed-effects は適用しない。固定効果ダミーを含む回帰の VIF・残差の正規性は識別の妥当性と関係がなく、診断は下の識別の項目で行う
 
 ## ライブラリ
 
