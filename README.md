@@ -46,8 +46,7 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 │   └── skills -> ../.claude/skills    # Codex 用シンボリックリンク
 ├── docs/
 │   ├── agent/                         # このリポジトリ固有の知識のみ（概要・データカタログ・指標定義）
-│   └── gallery/                       # 診断図ギャラリー（GitHub Pages で公開）
-│                                      #   図は scripts/gallery/collect_figures.py が outputs/diagnostics/ から複製
+│   └── gallery/                       # 診断図ギャラリー（GitHub Pages で公開。図はデモの出力をメンテナの手元で変換して配置）
 ├── data/
 │   ├── raw/                           # 元データ（不変・gitignore対象）
 │   ├── external/                      # 外部データ（不変・gitignore対象）
@@ -59,6 +58,7 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 │   ├── tables/                        # 集計テーブル
 │   └── reports/                       # レポート
 ├── scripts/                           # CI・検証スクリプト
+│   └── skill_eval/                    #   skill 発火テスト（run_skill_eval.py から手動実行）
 ├── src/analysis_project/              # 再利用可能なPythonモジュール
 └── tests/                             # テスト
 ```
@@ -118,24 +118,25 @@ IDE（JetBrains・Visual Studio・Xcode・Eclipse）で使う場合は、`AGENTS
 
 ```
 .claude/skills/<family>-diagnostics/
-├── SKILL.md            # 第 1 段: ルーター（約 60 行。ルーティング表・隣接 skill・「出力と報告」の共通書式）
+├── SKILL.md            # 第 1 段: ルーター（約 70 行。ルーティング表・隣接 skill・「出力と報告」の共通書式）
 └── references/
-    └── <method>.md     # 第 2 段: 手法別（約 60 行。適用範囲 / ライブラリ / 必ず出す図 / 必ず出す値 / 落とし穴）
+    └── <method>.md     # 第 2 段: 手法別（60〜140 行。適用範囲 / ライブラリ / 必ず出す図 / 必ず出す値 / 落とし穴）
 ```
 
 - 置き場は `.claude/skills/` の 1 か所だけです。Claude Code と Copilot は `.claude/skills/` を直接読み、Codex は `.agents/skills`（`.claude/skills` へのシンボリックリンク）から読むので、3 ツールで同じ内容が使われます
 - 各ディレクトリは他ファイルを参照しません。**他リポジトリへは `.claude/skills/<family>-diagnostics/` をディレクトリごとコピーするだけ**で使えます
 - 図は `outputs/diagnostics/<YYYYMMDD-HHMM>_<短縮名>/` に保存し（gitignore 済み）、報告には `| 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |` の表だけを載せます（判定は `OK` / `要対処` / `確認`）
 - 手法やルーターを追加する手順と雛形は [docs/agent/diagnostics-reference-template.md](docs/agent/diagnostics-reference-template.md)
+- skill が意図どおりに発火するか（頼んだ手法の references を読み、頼んでいない references は読まないか）は、[scripts/skill_eval/](scripts/skill_eval/README.md) のハーネスで確かめられます。ケースごとに `claude -p` を起動するので手動で実行します（費用の目安は同 README）。CI では `cases.yaml` と references の整合性を見るテストだけが走ります
 - 各 reference が「必ず出す」と定めた図を実データで出力したギャラリーが [docs/gallery/](docs/gallery/) にあります（5 スキル・17 手法・45 図）。`.github/workflows/pages.yml` で GitHub Pages に公開します
-- references 内のコード抜粋は実行確認済み（statsmodels / scikit-learn 1.8 / lifelines / cmdstanpy 2.39 など。本リポジトリの `pyproject.toml` には含めていないので、使う手法に応じて `uv add` してください）
+- references 内のコード抜粋が使うライブラリ（statsmodels / scikit-learn 1.8 / lifelines / cmdstanpy 2.39 など）は本リポジトリの `pyproject.toml` に含めていないので、使う手法に応じて `uv add` してください
 
 | ルーター（第 1 段） | 家族 | references（第 2 段） |
 |---|---|---|
-| `statistical-inference-diagnostics` | 統計的推論 | `ols`（線形・正則化・分位点回帰）, `glm`（ロジスティック・ポアソン・負の二項）, `mixed-effects`（混合効果・パネル）, `hypothesis-test`（検定。**安易に検定させないことが主目的**）, `survival`（KM・Cox）, `bayesian-mcmc`（cmdstanpy + ArviZ） |
-| `predictive-modeling-diagnostics` | 予測モデリング | `ml-evaluation`（分割・CV・リーク・ベースライン）, `tree-model`（決定木・RF・GBDT）, `model-interpretation`（SHAP・permutation・PDP/ICE）, `time-series`（ARIMA・状態空間・Prophet） |
+| `statistical-inference-diagnostics` | 統計的推論 | `ols`（線形・正則化・分位点回帰）, `glm`（ロジスティック・ポアソン・負の二項）, `mixed-effects`（混合効果・パネル）, `hypothesis-test`（検定。**安易に検定させないことが主目的**）, `survival`（KM・Cox・AFT・競合リスク）, `bayesian-mcmc`（cmdstanpy + ArviZ） |
+| `predictive-modeling-diagnostics` | 予測モデリング | `ml-evaluation`（分割・CV・リーク・ベースライン）, `tree-model`（決定木・RF・GBDT）, `model-interpretation`（SHAP・permutation・PDP/ICE）, `time-series`（ARIMA・状態空間・Prophet・VAR・変化点） |
 | `causal-inference-diagnostics` | 因果推論・効果検証 | `ab-test`（A/B テスト・SRM・CUPED）, `causal-observational`（傾向スコア・IPW・DML）, `causal-quasi-experimental`（DiD・IV・RDD・合成コントロール） |
-| `unsupervised-eda-diagnostics` | 教師なし・EDA 前処理 | `missing-data`（欠測・外れ値）, `clustering`（k-means・階層・GMM・DBSCAN）, `dimensionality-reduction`（PCA・因子分析・UMAP/t-SNE）, `anomaly-detection`（異常検知） |
+| `unsupervised-eda-diagnostics` | 教師なし・EDA 前処理 | `missing-data`（欠測・外れ値）, `clustering`（k-means・階層・GMM・DBSCAN）, `dimensionality-reduction`（PCA・因子分析・CFA/SEM・UMAP/t-SNE）, `anomaly-detection`（異常検知） |
 | `simulation-optimization-diagnostics` | シミュレーション・OR | `simulation`（モンテカルロ・離散事象）, `optimization`（LP/MIP・メタヒューリスティクス） |
 
 今後の拡張候補（未作成）: トピックモデル（LDA・BERTopic）、深層学習の学習診断。推薦評価・公平性指標・ドリフト監視・データ品質検証は対象外です。
