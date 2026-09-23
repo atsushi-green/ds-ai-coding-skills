@@ -6,7 +6,8 @@
 
 - 扱う: 教師あり ML の評価手続き全般（分割・CV・チューニング・ベースライン・リーク検査・予測区間）
 - 扱わない: モデル固有の診断 → `references/tree-model.md` / `statistical-inference-diagnostics`（`references/glm.md`） / 時系列予測固有の評価（季節 naive ベースライン・MASE・ローリング原点）→ `references/time-series.md` / 解釈 → `references/model-interpretation.md`
-- 時間の順序を持つデータを時間順に分割すること自体（`TimeSeriesSplit`）はリーク対策なので本ファイルで扱う。時系列モデルを当てはめない予測タスクでも適用する
+- 時間の順序を持つデータを時間順に分割すること自体（`TimeSeriesSplit`）はリーク対策なので本ファイルで扱う。時系列モデルを当てはめない予測タスクでも適用する（`references/time-series.md` は系列そのものをモデル化するときだけ）
+- モデルが `LogisticRegression`・線形回帰でも、係数を解釈せず汎化性能を報告するならここだけで足りる（`statistical-inference-diagnostics` の glm / ols は読まない）
 
 ## ライブラリ
 
@@ -42,6 +43,7 @@
 取得例:
 
 ```python
+import numpy as np
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -58,6 +60,8 @@ sizes, tr, va = learning_curve(pipe, X, y, cv=cv, scoring="roc_auc", train_sizes
 CV を回さない場合（NN など 1 回の学習が高コスト）は、test 予測の再標本化で幅を出す:
 
 ```python
+from sklearn.metrics import roc_auc_score
+
 rng = np.random.default_rng(0)
 idx = [i for i in rng.integers(0, len(y_te), (1000, len(y_te))) if len(np.unique(y_te[i])) == 2]
 ci = np.percentile([roc_auc_score(y_te[i], proba_te[i]) for i in idx], [2.5, 97.5])  # 再学習なし

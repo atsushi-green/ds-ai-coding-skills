@@ -5,7 +5,7 @@
 ## 適用範囲
 
 - 扱う: 単一決定木、RandomForest / ExtraTrees、GBDT（LightGBM / XGBoost / CatBoost / sklearn HistGradientBoosting）
-- 扱わない: 分割設計・CV・リーク検査 → `references/ml-evaluation.md` / SHAP・PDP・ALE → `references/model-interpretation.md` / 線形モデル → `statistical-inference-diagnostics`（references/ols.md・glm.md） / 教師なしの木（IsolationForest）→ `unsupervised-eda-diagnostics`（references/anomaly-detection.md）
+- 扱わない: 分割設計・CV・リーク検査 → `references/ml-evaluation.md` / SHAP・PDP・ALE → `references/model-interpretation.md` / 線形モデル → `statistical-inference-diagnostics`（references/ols.md・glm.md） / 教師なしの木（IsolationForest）→ `unsupervised-eda-diagnostics`（references/anomaly-detection.md） / DML・傾向スコアの nuisance モデルとして使う木・GBDT → `causal-inference-diagnostics`（`references/causal-observational.md` の nuisance 性能で見るので本ファイルは適用しない）
 - 分割器（`GroupKFold` / `TimeSeriesSplit` / `Stratified*`）と評価指標は `ml-evaluation.md` で決めたものを使う。本ファイルの枝刈り α の選択・OOB・early stopping・permutation importance もその分割と指標に従う
 
 ## ライブラリ
