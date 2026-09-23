@@ -152,6 +152,7 @@
       <ul>
         <li>題材は Titanic の <code>train.csv</code>（891 人）。生存時間分析のみ lifelines 同梱の Rossi 再犯データです。スキルの動作を示すデモで、データについての結論を出すものではありません。</li>
         <li>図は出力そのままです。基準を満たしている図も、前提が崩れている図も同じように並べています。</li>
+        <li>各手法に並んでいるのは、「題材」に書いた手法を指示したときに出る図だけです。指示していない手法の図（k-means に対する階層クラスタリングのデンドログラムなど）や、行順に意味のないデータでの Durbin-Watson のように前提を満たさない診断は出していません。</li>
         <li>各手法には診断サマリー（診断項目 / 実測値 / 合格基準 / 判定 / 次アクション）があり、ここにはそこから数項目を抜粋しています。</li>
       </ul>
       <ul class="legend">
@@ -191,7 +192,7 @@
               <dt>題材</dt>
               <dd><code>log1p(運賃) ~ 客室クラス + 性別 + 年齢 + SibSp + Parch + 乗船港 + TicketSize</code>（n = 712）</dd>
               <dt>判定</dt>
-              <dd><span class="badge badge--ok">OK 2</span> <span class="badge badge--check">確認 3</span> <span class="badge badge--act">要対処 1</span></dd>
+              <dd><span class="badge badge--ok">OK 1</span> <span class="badge badge--check">確認 3</span> <span class="badge badge--act">要対処 1</span></dd>
             </dl>
           </div>
         </div>
@@ -214,7 +215,7 @@
               <li><span class="badge badge--act">要対処</span><span>Breusch-Pagan p = 9.6e-05（基準 &gt; 0.05）<span class="v-next">HC3 ロバスト SE で再推定</span></span></li>
               <li><span class="badge badge--check">確認</span><span>Cook's D &gt; 4/n が 37 件<span class="v-next">該当行の実データを見て判断</span></span></li>
               <li><span class="badge badge--check">確認</span><span>Shapiro-Wilk p = 1.0e-31<span class="v-next">n = 712 なので中心極限定理で緩和できる</span></span></li>
-              <li><span class="badge badge--ok">OK</span><span>VIF 最大 2.28、Durbin-Watson 2.08</span></li>
+              <li><span class="badge badge--ok">OK</span><span>VIF 最大 2.28（TicketSize）。Durbin-Watson は行順（PassengerId）に意味がないので出していない</span></li>
             </ul>
           </div>
         </div>
@@ -458,7 +459,7 @@
             <ul>
               <li><span class="badge badge--act">要対処</span><span>Schoenfeld: age p = 0.0007、wexp p = 0.0068、全体 χ² = 17.95 (df 7, p = 0.012)<span class="v-next">この 2 変数を層別化して再当てはめ</span></span></li>
               <li><span class="badge badge--check">確認</span><span>ログランク p = 0.0501<span class="v-next">境界なので p で白黒つけず HR と CI で報告</span></span></li>
-              <li><span class="badge badge--check">確認</span><span>HR(fin) = 0.684 [0.470, 0.996]、C-index 0.640（学習データ上）</span></li>
+              <li><span class="badge badge--check">確認</span><span>HR(fin) = 0.684 [0.470, 0.996]、C-index 0.603 ± 0.053（5 分割 CV。学習データ上の 0.640 は楽観側なので採らない）</span></li>
               <li><span class="badge badge--ok">OK</span><span>打ち切り 73.6%（全員が研究終了）、イベント数 / 共変量数 = 16.3</span></li>
             </ul>
           </div>
@@ -739,7 +740,7 @@
       </article>
 
       <!-- 09 モデル解釈 -->
-      <article class="method" id="m-interp" data-method data-verdicts="ok check">
+      <article class="method" id="m-interp" data-method data-verdicts="ok check act">
         <div class="method__head">
           <div class="method__titleline">
             <span class="method__num">09</span>
@@ -751,7 +752,7 @@
               <dt>題材</dt>
               <dd>LightGBM 生存予測の permutation importance・SHAP・PDP / ICE（valid n = 178）</dd>
               <dt>判定</dt>
-              <dd><span class="badge badge--ok">OK 7</span> <span class="badge badge--check">確認 1</span></dd>
+              <dd><span class="badge badge--ok">OK 6</span> <span class="badge badge--check">確認 1</span> <span class="badge badge--act">要対処 1</span></dd>
             </dl>
           </div>
         </div>
@@ -785,7 +786,7 @@
             <p class="verdicts__title">診断サマリーから</p>
             <ul>
               <li><span class="badge badge--ok">OK</span><span>SHAP 加法性の検算 max |差| = 1.1e-14（valid 全件）</span></li>
-              <li><span class="badge badge--ok">OK</span><span>重要度順位の安定性 ρ 平均 0.78（5 fold）、手法間の順位一致 ρ = 0.98</span></li>
+              <li><span class="badge badge--act">要対処</span><span>重要度順位の安定性: fold 間 ρ の最小 0.45（平均 0.78、基準 &gt; 0.7）。手法間の順位一致は ρ = 0.98<span class="v-next">順位は主張せず上位 3 つ（male, Pclass, Fare）の集合として報告</span></span></li>
               <li><span class="badge badge--ok">OK</span><span>|r| &gt; 0.8 のペアなし（最大 0.62、Pclass–Fare）</span></li>
               <li><span class="badge badge--check">確認</span><span>Fare &gt; 100 は valid の 7.3%<span class="v-next">密度の薄い領域の PDP は読まない</span></span></li>
             </ul>
@@ -927,7 +928,7 @@
             <figcaption>
               <span class="fig__file">missing_diagnostics.png</span>
               欠測マトリクス、欠測相関ヒートマップ、群別の欠測率、観測値 vs 代入値の分布比較（平均値代入も併置）、
-              運賃の分布（外れ値候補に印）、相関行列。
+              運賃の分布（外れ値候補に印）、相関行列（Age 欠測を除く完全ケース n = 714。null を含むまま計算すると Age の相関が全部 NaN になる）。
             </figcaption>
           </figure>
           <div class="verdicts">
@@ -1039,7 +1040,7 @@
       </article>
 
       <!-- 15 異常検知 -->
-      <article class="method" id="m-anomaly" data-method data-verdicts="ok check">
+      <article class="method" id="m-anomaly" data-method data-verdicts="ok check act">
         <div class="method__head">
           <div class="method__titleline">
             <span class="method__num">15</span>
@@ -1051,7 +1052,7 @@
               <dt>題材</dt>
               <dd>年齢・運賃・家族構成・客室クラスを標準化して IsolationForest（n = 714、contamination 2%）</dd>
               <dt>判定</dt>
-              <dd><span class="badge badge--ok">OK 3</span> <span class="badge badge--check">確認 4</span></dd>
+              <dd><span class="badge badge--ok">OK 3</span> <span class="badge badge--check">確認 3</span> <span class="badge badge--act">要対処 1</span></dd>
             </dl>
           </div>
         </div>
@@ -1060,19 +1061,20 @@
             <a class="fig__frame" data-figure href="figures/anomaly/anomaly_diagnostics.webp"
                data-caption="異常検知の診断 4 パネル">
               <img src="figures/anomaly/anomaly_diagnostics.webp" width="2714" height="2192" loading="lazy" decoding="async"
-                   alt="異常スコアのヒストグラムと閾値、上位 14 件の特徴量 z スコアヒートマップ、手法間の Jaccard、contamination 感度分析の 4 パネル">
+                   alt="異常スコアのヒストグラムと閾値、上位 14 件の特徴量 z スコアヒートマップ、単純ベースラインとの Jaccard、seed と max_samples を変えた感度分析の 4 パネル">
             </a>
             <figcaption>
               <span class="fig__file">anomaly_diagnostics.png</span>
               異常スコアのヒスト（閾値に縦破線）、上位 14 件の特徴量 z スコア（各行が「なぜ異常か」）、
-              単純ベースラインとの上位集合 Jaccard、contamination を 0.5〜5% と変えた感度分析。
+              単純ベースライン（z スコア・Mahalanobis）との上位集合 Jaccard、seed と max_samples を変えたときの上位集合の一致。
+              contamination は閾値を動かすだけで順位を変えないので、感度分析では振っていません。
             </figcaption>
           </figure>
           <div class="verdicts">
             <p class="verdicts__title">診断サマリーから</p>
             <ul>
               <li><span class="badge badge--ok">OK</span><span>上位 14 件すべてに各特徴の z スコアを付与。Survived は異常ラベルとして使っていない</span></li>
-              <li><span class="badge badge--check">確認</span><span>IF vs LOF の上位集合 Jaccard = 0.00（IF の seed 間は平均 0.68）<span class="v-next">複数手法で共通する行だけを要確認に</span></span></li>
+              <li><span class="badge badge--act">要対処</span><span>seed・max_samples を変えた上位 14 件の Jaccard 最小 0.33（max_samples 128 vs 512。seed 間は 0.68〜0.91）<span class="v-next">どの設定でも上位に入る行だけを要確認に</span></span></li>
               <li><span class="badge badge--check">確認</span><span>スコア分布に明確な切れ目がない<span class="v-next">「件数で決めた」と明記</span></span></li>
               <li><span class="badge badge--check">確認</span><span>単純ベースラインとの Jaccard は z スコア 0.33 / Mahalanobis 0.27。ラベルがなく勝敗は判定できない</span></li>
             </ul>
