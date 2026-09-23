@@ -56,3 +56,6 @@ Thumbs.db
 .pytest_cache/
 
 *.png
+# ギャラリーの OGP 画像とアイコンは Pages で配信するのでコミットする
+!docs/gallery/assets/ogp.png
+!docs/gallery/apple-touch-icon.png
