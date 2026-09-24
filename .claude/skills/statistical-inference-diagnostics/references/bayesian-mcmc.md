@@ -46,7 +46,7 @@ print(s["r_hat"].max(), s["ess_bulk"].min(), s["ess_tail"].min(), n_div, float(a
 | R-hat (max) | < 1.01（1.1 は古い基準） | warmup 延長、反復増、再パラメータ化 |
 | ESS bulk (min) | > 400 | 反復増。自己相関の原因（パラメータ間の強相関）を直す |
 | ESS tail (min) | > 400 | 同上。区間を報告するなら必須 |
-| divergent transitions | 0 | 非中心化パラメータ化 → 事前分布を絞る → `adapt_delta` 0.9→0.95→0.99 の順 |
+| divergent transitions | 0 | 非中心化パラメータ化 → 事前分布を絞る → `adapt_delta` 0.9→0.95→0.99 の順（Stan の診断ガイドも `adapt_delta` は最後の手段としている）。事前分布を絞るのはサンプラーの設定ではなく事後分布そのものを変える操作なので、診断を通すためだけに絞らない。絞るなら領域知識の根拠を書き、事前予測チェックで妥当性を確かめ、事前分布を変える前後の事後要約を並べて感度を報告する。根拠がなければ飛ばして `adapt_delta` へ進む。`adapt_delta` を上げた後も全項目を診断し直す |
 | BFMI (min) | > 0.3 | 再パラメータ化 |
 | `fit.diagnose()` の出力 | 警告なし | 出力をそのまま報告に貼る |
 | モデル比較時: Pareto k（`az.loo`） | < 0.7（全観測） | k > 0.7 の観測を個別確認 |
@@ -54,8 +54,8 @@ print(s["r_hat"].max(), s["ess_bulk"].min(), s["ess_tail"].min(), n_div, float(a
 
 ## 落とし穴
 
-- divergence は「数個なら無視」ではない。階層モデルの漏斗を探索できていないサインで、事後分布にバイアスが入る
-- `adapt_delta` を上げて警告を消すだけの対処は誤り。まず非中心化（`theta = mu + sigma * theta_raw`）
+- divergence は「数個なら無視」ではない。階層モデルの漏斗を探索できていないサインで、事後分布に偏りが残りうる
+- `adapt_delta` を上げて警告を消すだけの対処は誤り（発散が減っても、探索できていない領域が残ることがある）。まず非中心化（`theta = mu + sigma * theta_raw`）
 - thinning は基本不要。ESS が足りないなら反復を増やすか、パラメータ化を直す
 - 事後予測チェックは収束診断の代替ではない。両方必要
 - `fit.diagnose()` を実行せずに `fit.summary()` だけ見ない
