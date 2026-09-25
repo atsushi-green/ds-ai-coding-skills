@@ -242,7 +242,7 @@
           <figure class="fig">
             <a class="fig__frame" data-figure href="figures/glm/glm_logit_diagnostics.webp"
                data-caption="ロジスティック回帰の診断 4 パネル（n=712）">
-              <img src="figures/glm/glm_logit_diagnostics.webp" width="2214" height="1817" loading="lazy" decoding="async"
+              <img src="figures/glm/glm_logit_diagnostics.webp" width="2292" height="1817" loading="lazy" decoding="async"
                    alt="ロジスティック回帰の診断 4 パネル。ROC 曲線、PR 曲線、十分位のキャリブレーションプロット、binned residual plot">
             </a>
             <figcaption>
@@ -256,10 +256,10 @@
           <div class="verdicts">
             <p class="verdicts__title">診断サマリーから</p>
             <ul>
-              <li><span class="badge badge--ok">OK</span><span>AUC 0.851（陽性率 40.4%、n = 712、陽性 288 件、PR-AUC 0.825。5-fold out-of-fold）</span></li>
-              <li><span class="badge badge--ok">OK</span><span>Brier 0.145（ベースライン 0.241）、係数 |max| 2.64・SE max 0.56 で完全分離なし</span></li>
+              <li><span class="badge badge--ok">OK</span><span>AUC 0.851（陽性率 40.4%、n = 712、陽性 288 件、AP 0.825。5-fold out-of-fold）</span></li>
+              <li><span class="badge badge--ok">OK</span><span>Brier 0.145（ベースライン 0.241）、係数 |max| 2.64・SE max 0.56 で完全分離の疑いなし</span></li>
               <li><span class="badge badge--ok">OK</span><span>EPV 36.0（陽性 288 件 / 説明変数 8）、VIF max 1.97（Pclass_3）</span></li>
-              <li><span class="badge badge--act">要対処</span><span>binned residual が ±2SE バンド外 2/20 ビン（10%、基準 5% 程度）。低確率側で過小予測の系統的な弧<span class="v-next">年齢の非線形項や性別×客室クラスの交互作用を試す</span></span></li>
+              <li><span class="badge badge--act">要対処</span><span>binned residual が ±2SE バンド外 2/20 ビン（件数は基準 3 個以内）だが、低確率側で過小予測の系統的な弧<span class="v-next">年齢の非線形項や性別×客室クラスの交互作用を試す</span></span></li>
               <li><span class="badge badge--check">確認</span><span>キャリブレーションの最大乖離 0.126<span class="v-next">確率を使うなら学習外データで較正</span></span></li>
               <li><span class="badge badge--check">確認</span><span>閾値 0.5 で TN 363 / FP 61 / FN 82 / TP 206<span class="v-next">コストから閾値を選び直す</span></span></li>
             </ul>
@@ -342,7 +342,7 @@
             <p class="verdicts__title">診断サマリーから</p>
             <ul>
               <li><span class="badge badge--ok">OK</span><span>差の点推定 + 95% CI: 年齢 −2.28 歳 [−4.47, −0.09]、log1p(運賃) +0.66 [0.53, 0.78]</span></li>
-              <li><span class="badge badge--ok">OK</span><span>効果量 + CI: 最大は運賃 d = +0.72 [0.57, 0.87]。他は小さい効果の範囲</span></li>
+              <li><span class="badge badge--ok">OK</span><span>効果量 + CI: 最大は運賃 d = +0.72 [0.57, 0.87]。仮置きの |d| = 0.2 を明確に超えたのは運賃だけ（実務上の意味は MID を決めてから判断）</span></li>
               <li><span class="badge badge--ok">OK</span><span>p 値は出していない。等分散検定で手法を選ばず最初から Welch</span></li>
               <li><span class="badge badge--check">確認</span><span>最小重要差（MID）が未定義<span class="v-next">意思決定に使うならドメイン側で定義</span></span></li>
             </ul>
@@ -880,7 +880,7 @@
           <div class="verdicts">
             <p class="verdicts__title">診断サマリーから</p>
             <ul>
-              <li><span class="badge badge--act">要対処</span><span>推定値 +1.67 [+1.47, +2.59]。生存確率の差なので範囲外<span class="v-next">効果は報告しない</span></span></li>
+              <li><span class="badge badge--act">要対処</span><span>推定値 +1.67 [+1.47, +2.59]。閾値近傍 7 人の局所線形で効果として読めず、13 歳で処置割当が変わる根拠もない<span class="v-next">効果は報告しない</span></span></li>
               <li><span class="badge badge--act">要対処</span><span>閾値近傍 n = 4 / 3（目安は両側 ≥ 20）、共変量の跳びが 0/4 変数で推定不能</span></li>
               <li><span class="badge badge--act">要対処</span><span>プラセボ閾値 25 歳で跳びあり（−0.195 [−0.275, −0.107]）</span></li>
               <li><span class="badge badge--ok">OK</span><span>密度検定 p = 0.99、局所線形（p = 1）+ MSE 最適バンド幅 + 三角カーネル</span></li>
