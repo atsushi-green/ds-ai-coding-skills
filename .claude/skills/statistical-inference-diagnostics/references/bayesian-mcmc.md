@@ -11,7 +11,7 @@
 
 - **cmdstanpy**（サンプリング）+ **ArviZ**（診断）を標準とする。Stan モデルは `.stan` ファイルに書き `CmdStanModel(stan_file=...)` でコンパイル
 - 診断は `az.from_cmdstanpy(fit)` で ArviZ に一元化。**ArviZ 1.x で関数名と戻り値が変わった**（`plot_ppc` → `plot_ppc_dist`、`plot_trace` → `plot_trace_dist` ほか。図は PlotCollection を返し `pc.savefig(path)` で保存、Figure は `pc.viz["figure"].item()`）。下の取得例は 1.x。0.x のコードを動かすなら `arviz<1` に固定する
-- 未導入なら `uv add cmdstanpy arviz` の後 `uv run install_cmdstan`（初回は CmdStan の C++ ビルドが要る）
+- cmdstanpy が未導入なら `uv add cmdstanpy arviz`。CmdStan 本体は先に `uv run python -c "import cmdstanpy; print(cmdstanpy.cmdstan_path())"` で既存のもの（環境変数 `CMDSTAN` か `~/.cmdstan`）を探し、見つからないときだけ `uv run install_cmdstan`（C++ ビルドが要る）。既存の CmdStan がある場所へ `install_cmdstan` を実行しない（ダウンロードし直して上書きし、ビルド済みのものが壊れる）
 
 ```python
 from cmdstanpy import CmdStanModel
