@@ -31,7 +31,13 @@ from skill_eval.cases import (
 )
 from skill_eval.evaluate import evaluate
 from skill_eval.report import build_html, build_markdown
-from skill_eval.sandbox import build_sandbox, changed_files, claude_command, snapshot
+from skill_eval.sandbox import (
+    build_sandbox,
+    changed_files,
+    claude_command,
+    sandbox_env,
+    snapshot,
+)
 from skill_eval.transcript import Transcript, normalize_skill_name
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -358,6 +364,21 @@ def test_claude_command_keeps_prompt_out_of_argv() -> None:
     assert "--verbose" in cmd
     assert cmd[cmd.index("--model") + 1] == "sonnet"
     assert cmd[cmd.index("--allowedTools") + 1] == "Bash(uv *)"
+
+
+def test_sandbox_env_keeps_uv_cache_inside_and_drops_parent_venv(tmp_path: Path) -> None:
+    base = {
+        "PATH": "/usr/bin",
+        "CMDSTAN": "/opt/cmdstan",
+        "VIRTUAL_ENV": "/repo/.venv",
+        "CLAUDECODE": "1",
+    }
+    env = sandbox_env(base, tmp_path)
+    # uv のキャッシュが sandbox の中なら、エージェントが UV_CACHE_DIR を前置きする理由がない
+    assert Path(env["UV_CACHE_DIR"]).parent == tmp_path
+    assert "VIRTUAL_ENV" not in env and "CLAUDECODE" not in env
+    assert env["CMDSTAN"] == "/opt/cmdstan"
+    assert base["VIRTUAL_ENV"] == "/repo/.venv"  # 元の辞書は書き換えない
 
 
 # --------------------------------------------------------------------------------------

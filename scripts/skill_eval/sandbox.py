@@ -18,13 +18,16 @@ import os
 import shutil
 import stat
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 
 from skill_eval.cases import EvalConfig
 
+UV_CACHE_SUBDIR = ".uv-cache"
 SNAPSHOT_SKIP_DIRS = {
     ".git",
     ".venv",
+    UV_CACHE_SUBDIR,
     "__pycache__",
     ".ruff_cache",
     ".mypy_cache",
@@ -37,8 +40,9 @@ COLLECT_SUFFIXES = {
 }  # fmt: skip
 COLLECT_MAX_BYTES = 5 * 1024 * 1024
 DATA_DIRS = ("data/raw", "data/external", "data/interim", "data/processed", "outputs")
-# 入れ子の claude 起動を妨げる可能性のある環境変数（Claude Code の中から実行した場合）
-STRIP_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT")
+# 入れ子の claude 起動を妨げる可能性のある環境変数（Claude Code の中から実行した場合）と、
+# リポジトリ側の .venv を指したままの VIRTUAL_ENV（sandbox の uv が毎回警告を出す）
+STRIP_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "VIRTUAL_ENV")
 
 Snapshot = dict[str, tuple[int, int]]
 
@@ -96,6 +100,9 @@ def build_sandbox(
     git = ["git", "-c", "user.name=skill-eval", "-c", "user.email=skill-eval@localhost",
            "-c", "commit.gpgsign=false"]  # fmt: skip
     subprocess.run([*git, "init", "-q"], cwd=dest, check=True)
+    # sandbox_env で向ける uv のキャッシュは git status に出さない
+    with (dest / ".git" / "info" / "exclude").open("a", encoding="utf-8") as f:
+        f.write(f"{UV_CACHE_SUBDIR}/\n")
     subprocess.run([*git, "add", "-A"], cwd=dest, check=True)
     subprocess.run([*git, "commit", "-q", "-m", "sandbox"], cwd=dest, check=True)
     if (dest / "pyproject.toml").is_file():
@@ -192,6 +199,26 @@ def claude_command(config: EvalConfig) -> list[str]:
     return cmd
 
 
+def sandbox_env(base: Mapping[str, str], cwd: Path) -> dict[str, str]:
+    """sandbox で起動する claude に渡す環境変数を作る。
+
+    uv のキャッシュを sandbox の中に置く。既定のキャッシュ（ホーム配下）は作業ディレクトリの
+    外なので、「外に書かない」という追記プロンプトに従ったエージェントが
+    `UV_CACHE_DIR=... uv add` と前置きし、許可リストの `Bash(uv *)` に当たらず
+    承認待ち（無人なので拒否）になっていた。
+
+    Args:
+        base: 元の環境変数。
+        cwd: sandbox のディレクトリ。
+
+    Returns:
+        STRIP_ENV を除き、UV_CACHE_DIR を sandbox 内に向けた環境変数。
+    """
+    env = {k: v for k, v in base.items() if k not in STRIP_ENV}
+    env["UV_CACHE_DIR"] = str(cwd / UV_CACHE_SUBDIR)
+    return env
+
+
 def run_claude(
     config: EvalConfig, prompt: str, cwd: Path, transcript_path: Path, stderr_path: Path
 ) -> bool:
@@ -207,7 +234,7 @@ def run_claude(
     Returns:
         タイムアウトで打ち切ったら True。
     """
-    env = {k: v for k, v in os.environ.items() if k not in STRIP_ENV}
+    env = sandbox_env(os.environ, cwd)
     transcript_path.parent.mkdir(parents=True, exist_ok=True)
     with transcript_path.open("wb") as out, stderr_path.open("wb") as err:
         proc = subprocess.Popen(
