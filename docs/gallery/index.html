@@ -686,7 +686,7 @@
               <dt>題材</dt>
               <dd>生存予測の決定木・RandomForest・LightGBM（train 534 / valid 178 / test 179、<code>group = Ticket</code>）</dd>
               <dt>判定</dt>
-              <dd><span class="badge badge--ok">OK 9</span> <span class="badge badge--check">確認 1</span></dd>
+              <dd><span class="badge badge--ok">OK 10</span> <span class="badge badge--check">確認 1</span></dd>
             </dl>
           </div>
         </div>
@@ -699,7 +699,7 @@
             </a>
             <figcaption>
               <span class="fig__file">tree_diagnostics.png</span>
-              cost-complexity pruning path（採用 α = 0.0073 に縦破線）、葉のサンプル数、permutation importance、
+              cost-complexity pruning path（採用 α = 0.0073 に縦破線。α = 0 と比べた葉の数と fold ごとの差を左上に注記）、葉のサンプル数、permutation importance、
               RF の OOB error vs 本数、GBDT の train / valid loss（<code>best_iteration</code> = 301 に縦破線）。
             </figcaption>
           </figure>
@@ -731,6 +731,7 @@
             <p class="verdicts__title">診断サマリーから</p>
             <ul>
               <li><span class="badge badge--ok">OK</span><span>決定木 train / valid 0.794 / 0.826、最小葉 16 件</span></li>
+              <li><span class="badge badge--ok">OK</span><span>枝刈りで 5 fold すべて CV 正解率が上がった（α = 0 との差 +0.009〜+0.103）。葉は 137 枚 → 5 枚</span></li>
               <li><span class="badge badge--ok">OK</span><span>RF train / OOB / valid 0.899 / 0.796 / 0.815、GBDT train / valid AUC 0.962 / 0.915</span></li>
               <li><span class="badge badge--ok">OK</span><span>permutation importance 上位は male, Pclass, Fare。seed 5 本の SD 0.0008</span></li>
               <li><span class="badge badge--check">確認</span><span>OOB error の変動幅 0.011（200〜500 本）<span class="v-next">本数を 1,000 まで増やして確認</span></span></li>
