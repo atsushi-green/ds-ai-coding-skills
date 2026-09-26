@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="ds-ai-coding-skills">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff7f63"/>
+      <stop offset="1" stop-color="#d8452a"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="152" height="152" rx="36" fill="url(#g)"/>
+  <!-- 残差プロット風の散布点 -->
+  <g fill="#fff" opacity="0.55">
+    <circle cx="38" cy="98" r="5"/><circle cx="52" cy="84" r="5"/><circle cx="64" cy="102" r="5"/>
+    <circle cx="78" cy="76" r="5"/><circle cx="92" cy="90" r="5"/><circle cx="104" cy="66" r="5"/>
+    <circle cx="118" cy="80" r="5"/>
+  </g>
+  <!-- 当てはめ線 -->
+  <path d="M30 108 L130 58" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <!-- 診断 OK のチェック -->
+  <circle cx="116" cy="116" r="26" fill="#2c7a6d" stroke="#fff" stroke-width="5"/>
+  <path d="M104 116 l8 8 l16 -17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
