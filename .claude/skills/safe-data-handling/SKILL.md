@@ -38,3 +38,19 @@ Use this skill before reading, writing, moving, modifying, deleting, or generati
 - If analysis requires customer-level data, keep it in `data/raw/` (gitignored) and never commit.
 - Aggregated or anonymized outputs are acceptable for `data/processed/` or `outputs/`.
 - When in doubt, ask before writing customer-level data to any path.
+- Analysis outputs must not allow individuals to be re-identified.
+
+## Credentials and Secrets
+
+- `.env` is gitignored. `.env.example` lists key names only — never real values.
+- Do not hard-code API keys, tokens, or passwords in code or notebook outputs.
+- Load secrets from environment variables with `python-dotenv`.
+
+## Verification
+
+`data/raw/` and `data/external/` are gitignored, and CI enforces the rules above:
+
+```bash
+uv run python scripts/check_no_raw_data_commit.py    # rawデータのコミットを検知
+uv run python scripts/check_no_sensitive_patterns.py # 秘密情報のパターンを検知
+```

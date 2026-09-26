@@ -1,6 +1,6 @@
 # データサイエンス分析プロジェクトテンプレート
 
-GitHub Copilot / Copilot Agent Mode / Copilot Cloud Agent および Claude Code と連携し、安全かつ一貫したデータ分析作業を行うためのリポジトリテンプレートです。
+GitHub Copilot / Copilot Agent Mode / Copilot Cloud Agent、Claude Code、Codex と連携し、安全かつ一貫したデータ分析作業を行うためのリポジトリテンプレートです。
 
 ## セットアップ
 
@@ -33,17 +33,20 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 
 ```
 .
-├── AGENTS.md                          # Copilot エージェント用ルーター
-├── CLAUDE.md                          # Claude Code 用指示（ハードルール・スキルルーター）
+├── AGENTS.md                          # Copilot / Codex 用ルーター（CLAUDE.md と同内容）
+├── CLAUDE.md                          # Claude Code 用ルーター（ハードルール・スキルルーティング）
 ├── .github/
-│   ├── copilot-instructions.md        # Copilot共通指示（薄いファイル）
 │   ├── workflows/ci.yml               # GitHub Actions CI
-│   ├── instructions/                  # パス別補助指示（Copilot）
-│   ├── prompts/                       # 再利用プロンプト（Copilot）
-│   └── skills/                        # 作業別スキル（Copilot）
+│   ├── instructions/                  # パス別補助指示（Copilot の applyTo 用）
+│   └── prompts/                       # 再利用プロンプト（Copilot）
 ├── .claude/
-│   └── skills/                        # 作業別スキル（Claude Code、旧スラッシュコマンドを含む）
-├── docs/agent/                        # プロジェクト固有ドキュメント（共通）
+│   └── skills/                        # 作業別スキルの唯一の置き場（3ツール共通。旧スラッシュコマンドを含む）
+│                                      #   *-diagnostics は2段構成: ルーター SKILL.md + references/<method>.md
+├── .agents/
+│   └── skills -> ../.claude/skills    # Codex 用シンボリックリンク
+├── docs/
+│   ├── agent/                         # このリポジトリ固有の知識のみ（概要・データカタログ・指標定義）
+│   └── gallery/                       # 診断図ギャラリー（GitHub Pages で公開。図はデモの出力をメンテナの手元で変換して配置）
 ├── data/
 │   ├── raw/                           # 元データ（不変・gitignore対象）
 │   ├── external/                      # 外部データ（不変・gitignore対象）
@@ -55,41 +58,44 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 │   ├── tables/                        # 集計テーブル
 │   └── reports/                       # レポート
 ├── scripts/                           # CI・検証スクリプト
+│   └── skill_eval/                    #   skill 発火テスト（run_skill_eval.py から手動実行）
 ├── src/analysis_project/              # 再利用可能なPythonモジュール
 └── tests/                             # テスト
 ```
 
 ## エージェント指示体系の設計
 
-このリポジトリは **GitHub Copilot** と **Claude Code** の両方に対応しています。  
-共通の `docs/agent/` ドキュメントとスキル体系を持ちながら、エージェントごとに専用の指示ファイルを用意しています。
+このリポジトリは **GitHub Copilot**・**Claude Code**・**Codex** の3つに対応しています。
+どのツールを使っても同じルールが効くように、**指示の実体は1か所にしか置かない**方針を取っています。
 
-### GitHub Copilot の構成
+### ルーター文書（1つの内容を2ファイルで提供）
 
-| ファイル | 役割 |
-|----------|------|
-| `.github/copilot-instructions.md` | 薄い共通指示。全タスクで必要な最小限のルールと詳細指示への案内 |
-| `AGENTS.md` | タスク種別に応じて適切なスキルファイルへ誘導するルーター |
-| `.github/skills/*/SKILL.md` | 作業別の詳細手順（Python・SQL・データ処理・可視化など） |
-| `.github/instructions/*.instructions.md` | パス別の補助指示。ファイル種別に応じた自動適用ルール |
-| `.github/prompts/*.prompt.md` | 再利用可能なプロンプト（分析計画・SQLレビュー・レポートなど） |
+ツールごとに読むファイル名が決まっているため、ファイルは2つありますが**内容は同一**です。
+`## Hard Rules` 以降が一致しているかは `scripts/sync_agent_docs.py --check` がCIで検証します。
 
-### Claude Code の構成
+| ファイル | 読むツール | 役割 |
+|----------|-----------|------|
+| `CLAUDE.md` | Claude Code | ハードルール・共通コマンド・規約・スキルルーティング。末尾の `## Skills`（skill の `@` import）だけが Claude 固有 |
+| `AGENTS.md` | GitHub Copilot（VS Code / CLI / coding agent）・Codex | 上と同内容。冒頭の導入文だけが固有 |
 
-| ファイル | 役割 |
-|----------|------|
-| `CLAUDE.md` | ハードルール・パッケージ管理・スキルルーティングを一元管理 |
-| `.claude/skills/*/SKILL.md` | 作業別の詳細手順（Copilot の skills と同内容）。 |
+### スキルと補助ファイル
 
-### 共通リソース
+| パス | 読むツール | 役割 |
+|------|-----------|------|
+| `.claude/skills/*/SKILL.md` | 3ツール共通 | 作業別の詳細手順（Python・SQL・データ処理・可視化・診断など）。ミラーは持たない |
+| `.agents/skills` | Codex | `.claude/skills` へのシンボリックリンク |
+| `.github/instructions/*.instructions.md` | Copilot | パス別の補助指示（`applyTo` による自動適用）。内容はルーター文書の「File-Specific Guidelines」と対応 |
+| `.github/prompts/*.prompt.md` | Copilot | 再利用可能なプロンプト。`.claude/skills/` のタスクスキルと対応 |
+| `docs/agent/` | 3ツール共通 | **このリポジトリでしか通用しない知識のみ**（プロジェクト概要・データカタログ・指標定義）。作業手順や規約は skill 側が正本で、ここには重複させない |
 
-| ディレクトリ | 役割 |
-|-------------|------|
-| `docs/agent/` | プロジェクト固有の知識（データカタログ・指標定義・分析ワークフローなど） |
+Copilot は `.github/copilot-instructions.md` も読めますが、VS Code / CLI / coding agent はいずれも
+`AGENTS.md` に対応しているため、二重管理を避けて**置いていません**。`AGENTS.md` を読まない
+IDE（JetBrains・Visual Studio・Xcode・Eclipse）で使う場合は、`AGENTS.md` と同内容の
+`.github/copilot-instructions.md` を追加してください。
 
 この設計により、全部入りの巨大な指示ファイルを避け、トークン効率よく必要な情報だけを参照できます。
 
-### 利用可能なスキル（両エージェント共通）
+### 利用可能なスキル（3ツール共通）
 
 | スキル | 用途 |
 |--------|------|
@@ -101,8 +107,41 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 | `visualization` | グラフ・可視化 |
 | `path-and-io` | ファイルパスとI/O |
 | `notebook-workflow` | Notebook作業 |
-| `statistical-ml-review` | 統計・ML分析 |
+| `statistical-ml-review` | 統計・ML分析のレビュー（欠けている図・値を `*-diagnostics` に照らして指摘） |
 | `analysis-reporting` | 分析結果の報告 |
+
+### 手法別診断 skill（*-diagnostics）
+
+手法ごとに「実行したら必ずセットで出す図と値」を定義した skill 群です。LLM は「回帰したら残差を見るべき」と知っていても、頼まれたこと（当てはめて R² を報告）だけで診断を省きがちです。この skill 群は各手法について **図（何が見えれば合格か）・値（合格基準と違反時の対処）・落とし穴** を強制します。ユーザーが診断に言及しなくても、対応する手法を実行した時点で適用されます。
+
+**2 段構成（progressive disclosure）** です。常にコンテキストに載るのは 5 つのルーターの `description` だけで、手法別の本文はルーターが選んだときにだけ読まれます。
+
+```
+.claude/skills/<family>-diagnostics/
+├── SKILL.md            # 第 1 段: ルーター（約 70 行。ルーティング表・隣接 skill・「出力と報告」の共通書式）
+└── references/
+    └── <method>.md     # 第 2 段: 手法別（60〜140 行。適用範囲 / ライブラリ / 必ず出す図 / 必ず出す値 / 落とし穴）
+```
+
+- 置き場は `.claude/skills/` の 1 か所だけです。Claude Code と Copilot は `.claude/skills/` を直接読み、Codex は `.agents/skills`（`.claude/skills` へのシンボリックリンク）から読むので、3 ツールで同じ内容が使われます
+- 各ディレクトリは他ファイルを参照しません。**他リポジトリへは `.claude/skills/<family>-diagnostics/` をディレクトリごとコピーするだけ**で使えます
+- 図は `outputs/diagnostics/<YYYYMMDD-HHMM>_<短縮名>/` に保存し（gitignore 済み）、報告には `| 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |` の表だけを載せます（判定は `OK` / `要対処` / `確認`）
+- 手法やルーターを追加する手順と雛形は [docs/agent/diagnostics-reference-template.md](docs/agent/diagnostics-reference-template.md)
+- skill が意図どおりに発火するか（頼んだ手法の references を読み、頼んでいない references は読まないか）は、[scripts/skill_eval/](scripts/skill_eval/README.md) のハーネスで確かめられます。ケースごとに `claude -p` を起動するので手動で実行します（費用の目安は同 README）。CI では `cases.yaml` と references の整合性を見るテストだけが走ります
+- 各 reference が「必ず出す」と定めた図を実データで出力したギャラリーが [docs/gallery/](docs/gallery/) にあります（5 スキル・17 手法・45 図）。`.github/workflows/pages.yml` で GitHub Pages に公開します
+- references 内のコード抜粋が使うライブラリ（statsmodels / scikit-learn 1.8 / lifelines / cmdstanpy 2.39 など）は本リポジトリの `pyproject.toml` に含めていないので、使う手法に応じて `uv add` してください
+
+| ルーター（第 1 段） | 家族 | references（第 2 段） |
+|---|---|---|
+| `statistical-inference-diagnostics` | 統計的推論 | `ols`（線形・正則化・分位点回帰）, `glm`（ロジスティック・ポアソン・負の二項）, `mixed-effects`（混合効果・パネル）, `hypothesis-test`（検定。**安易に検定させないことが主目的**）, `survival`（KM・Cox・AFT・競合リスク）, `bayesian-mcmc`（cmdstanpy + ArviZ） |
+| `predictive-modeling-diagnostics` | 予測モデリング | `ml-evaluation`（分割・CV・リーク・ベースライン）, `tree-model`（決定木・RF・GBDT）, `model-interpretation`（SHAP・permutation・PDP/ICE）, `time-series`（ARIMA・状態空間・Prophet・VAR・変化点） |
+| `causal-inference-diagnostics` | 因果推論・効果検証 | `ab-test`（A/B テスト・SRM・CUPED）, `causal-observational`（傾向スコア・IPW・DML）, `causal-quasi-experimental`（DiD・IV・RDD・合成コントロール） |
+| `unsupervised-eda-diagnostics` | 教師なし・EDA 前処理 | `missing-data`（欠測・外れ値）, `clustering`（k-means・階層・GMM・DBSCAN）, `dimensionality-reduction`（PCA・因子分析・CFA/SEM・UMAP/t-SNE）, `anomaly-detection`（異常検知） |
+| `simulation-optimization-diagnostics` | シミュレーション・OR | `simulation`（モンテカルロ・離散事象）, `optimization`（LP/MIP・メタヒューリスティクス） |
+
+今後の拡張候補（未作成）: トピックモデル（LDA・BERTopic）、深層学習の学習診断。推薦評価・公平性指標・ドリフト監視・データ品質検証は対象外です。
+
+注意: Codex を使う場合、Windows で clone するときはシンボリックリンクを有効にしてください（`git config core.symlinks true` と開発者モード）。無効の環境では `.agents/skills` がリンク先パスを書いたテキストファイルになります。Claude Code と Copilot は `.claude/skills/` を直接読むため影響ありません。
 
 ### タスク実行用スキル（旧コマンド / プロンプト）
 
@@ -119,18 +158,18 @@ Claude Code では `.claude/skills/*/SKILL.md` として（`/plan-analysis` の�
 | `run-eda` | `/run-eda` | — | EDAの実装・実行 |
 | `run-modeling` | `/run-modeling` | — | 予測モデリングの実装・評価 |
 
-### Claude/Copilot間のスキル同期
+### エージェント文書の同期
 
-Claude Code と GitHub Copilot のスキルは2種類の対応関係を持ちます。
+skill 本体はミラーを持たないため、同期が必要なのは次の2種類だけです。
 
-- **通常スキル**: `.claude/skills/<name>/SKILL.md` ⇔ `.github/skills/<name>/SKILL.md`。スキル内リンクの相対パス表記を除いて同一内容。
+- **ルーター文書**: `CLAUDE.md` ⇔ `AGENTS.md`。`## Hard Rules` 以降の本文が完全に同一であること。冒頭の導入文と、`CLAUDE.md` にだけある `## Skills`（skill の `@` import）は各ファイル固有として比較対象外。
 - **タスク実行スキル**（frontmatter に `disable-model-invocation: true`）: `.claude/skills/<name>/SKILL.md` ⇔ `.github/prompts/<name>.prompt.md`。frontmatter 形式を変換し、Copilot の `${input:...}` プレースホルダや `CLAUDE.md`⇔`AGENTS.md` の相互参照を保持・変換しながら同期。
 
 片方を編集すると差分が生じるため、以下の仕組みで検出・解消します。
 
-- `uv run python scripts/sync_agent_docs.py --check` — 書き込みせず差分の有無だけを判定する（`run_quality_checks.sh` / CIに組み込み済み。通常スキルの差分のみ終了コード1）。
-- `uv run python scripts/sync_agent_docs.py --from claude`（または `--from github`） — **編集した側を明示して**もう一方へ反映する。方向は必須（mtime による自動判定はしない）。
-- `/sync-agent-docs`（Claude Code）・prompt（Copilot） — 上記スクリプトを実行した上で、片側にしか存在しないスキルなど、判断が必要な差分をエージェントが解消する。
+- `uv run python scripts/sync_agent_docs.py --check` — 書き込みせず差分の有無だけを判定する（`run_quality_checks.sh` / CIに組み込み済み。ルーター文書の差分のみ終了コード1）。
+- `uv run python scripts/sync_agent_docs.py --from claude`（または `--from github`） — **編集した側を明示して**もう一方へ反映する。方向は必須（mtime による自動判定はしない）。元ファイルの改行コードは保持されます。
+- `/sync-agent-docs`（Claude Code）・prompt（Copilot） — 上記スクリプトを実行した上で、対応するタスクスキルが無い prompt など、判断が必要な差分をエージェントが解消する。
 - ロジックのテスト: `uv run pytest tests/test_sync_agent_docs.py`。
 
 ## データの安全性ルール

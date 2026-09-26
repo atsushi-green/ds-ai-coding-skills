@@ -1,13 +1,14 @@
 ---
 agent: "agent"
-description: "Claude CodeとGitHub Copilotのスキル・指示ファイルの差分を検出し、機械的な部分はスクリプトで、判断が必要な部分はここで同期する"
+description: "Claude Code・GitHub Copilot・Codex のルーター文書とタスクスキルの差分を検出し、機械的な部分はスクリプトで、判断が必要な部分はここで同期する"
 ---
 
 # Skill: Sync Agent Docs
 
-Claude Code (`.claude/`) と GitHub Copilot (`.github/`, `AGENTS.md`) は、共通スキルについて
-「内部リンクの表記以外は同一内容」という設計になっている（`README.md` 参照）。
-片方を編集した後にこのスキルを実行し、もう一方との差分を解消する。
+Claude Code は `CLAUDE.md` を、GitHub Copilot と Codex は `AGENTS.md` を読む。一方で skill 本体は
+`.claude/skills/` の1か所だけに置き、3ツールとも同じファイルを参照する（`README.md` 参照）。
+そのため同期が必要なのは「ルーター文書」と「タスク実行スキル」の2種類だけで、片方を編集した後に
+このスキルを実行して差分を解消する。
 
 ## 手順
 
@@ -25,9 +26,11 @@ Claude Code (`.claude/`) と GitHub Copilot (`.github/`, `AGENTS.md`) は、共�
    `--from` に渡すこと。
 
    このスクリプトは2種類のペアを扱う。
-   - **通常スキル**: `.claude/skills/<name>/SKILL.md` と `.github/skills/<name>/SKILL.md`。
-     内部リンクの相対パス表記だけを変換し、`--from` で指定した側の内容をもう一方へコピーする。
-     このドリフトは `--check` でCIブロッキング対象（終了コード1）。
+   - **ルーター文書**: `CLAUDE.md` と `AGENTS.md`。`## Hard Rules` 以降の本文は完全に同一である
+     べきで、冒頭の導入文と、`CLAUDE.md` にだけある `## Skills`（skill の `@` import）は各ファイル
+     固有として比較・上書きの対象外になる。`--from` で指定した側の本文をもう一方へコピーする
+     （元ファイルの改行コードは保持される）。このドリフトは `--check` でCIブロッキング対象
+     （終了コード1）。
    - **タスク実行スキル**（frontmatterに `disable-model-invocation: true` があるスキル）:
      `.claude/skills/<name>/SKILL.md` と `.github/prompts/<name>.prompt.md`。
      frontmatterを変換（`name`/`disable-model-invocation` ⇔ `agent: "agent"`）しつつ、
@@ -37,13 +40,13 @@ Claude Code (`.claude/`) と GitHub Copilot (`.github/`, `AGENTS.md`) は、共�
        「引数の確認」箇条書き（frontmatter descriptionの `引数: <a> <b>` で検出）は
        「保護ゾーン」として扱われ、同期時に削除・上書きされず、既存の内容がそのまま
        もう一方に引き継がれる。周辺の説明文だけが更新される。
-     - `CLAUDE.md`⇔`AGENTS.md`、`.claude/skills/`⇔`.github/skills/` のような
-       本文中の相互参照は `TASK_REFERENCE_MAP`（`scripts/sync_agent_docs.py`）に従って
-       自動的に書き換わる。両陣営を意図的に併記するメタ文書（このスキル自身のように
-       「`CLAUDE.md` と `AGENTS.md`」を並べて説明するもの）は `REFERENCE_REWRITE_EXEMPT`
-       に登録して変換対象から除外する。新しい種類の相互参照を追加した場合は
-       `TASK_REFERENCE_MAP` に、併記メタ文書を追加した場合は `REFERENCE_REWRITE_EXEMPT` に
-       それぞれエントリを足すこと。
+     - `CLAUDE.md`⇔`AGENTS.md` のような本文中の相互参照は `TASK_REFERENCE_MAP`
+       （`scripts/sync_agent_docs.py`）に従って自動的に書き換わる。skill のパスは
+       3ツール共通（`.claude/skills/`）なので書き換え対象ではない。両陣営を意図的に併記する
+       メタ文書（このスキル自身のように「`CLAUDE.md` と `AGENTS.md`」を並べて説明するもの）は
+       `REFERENCE_REWRITE_EXEMPT` に登録して変換対象から除外する。新しい種類の相互参照を
+       追加した場合は `TASK_REFERENCE_MAP` に、併記メタ文書を追加した場合は
+       `REFERENCE_REWRITE_EXEMPT` にそれぞれエントリを足すこと。
      - frontmatterのdescriptionは二重引用符でエスケープしてエンコードされる
        （`"` を含んでも壊れない）。Claude側は `引数: ` のような colon-space を含むときだけ
        引用符を付ける。
@@ -51,14 +54,11 @@ Claude Code (`.claude/`) と GitHub Copilot (`.github/`, `AGENTS.md`) は、共�
        後は必ず `git diff` で内容を確認すること。ロジックを変更した場合は
        `uv run pytest tests/test_sync_agent_docs.py` で退行がないか確認する。
 
-2. スクリプトの出力にある **WARNING（片側にのみ存在するスキル）** を確認する。
-   これは新規スキルディレクトリの追加であり、単純コピーでは済まない（frontmatter形式や
-   ディレクトリ構成が異なる場合がある）。以下を判断して実施する。
-   - 意図的な追加であれば、もう一方の陣営にも同内容のスキルを作成する（内部リンクの表記は
-     対象陣営の規約に合わせて書き換える）。
-   - `.claude/skills/` に作る場合: frontmatter は `name` / `description` の2キー。
-   - `.github/skills/` に作る場合: 同じ frontmatter 形式でよいが、内部リンクは
-     `../<name>/SKILL.md` 形式にする。
+2. スクリプトの出力にある **WARNING（対応するタスクスキルが無い prompt）** を確認する。
+   `.github/prompts/<name>.prompt.md` だけが存在する状態であり、単純コピーでは済まない。
+   以下を判断して実施する。
+   - 意図的な追加であれば、`.claude/skills/<name>/SKILL.md` を作成する。frontmatter は
+     `name` / `description` / `disable-model-invocation: true` の3キー。
    - 一時的な作業中のファイルであれば、ユーザーに確認してから対応する。
 
 3. スクリプトの出力にある **タスク実行スキルのDRIFT** を確認する。
@@ -70,16 +70,12 @@ Claude Code (`.claude/`) と GitHub Copilot (`.github/`, `AGENTS.md`) は、共�
    - 文言を逐語訳する必要はない。各陣営の既存の書き方（Claudeは日本語の指示文、
      Copilotは英語の `${input:...}` プレースホルダなど）に合わせる。
 
-4. `CLAUDE.md` と `AGENTS.md` / `.github/copilot-instructions.md` のハードルール・
-   ルーティングテーブルに差分がないか確認する。これらも意図的に構成が異なる
-   （`CLAUDE.md` はハードルール+ルーターを1ファイルに統合、Copilot側は
-   `AGENTS.md` とcopilot-instructions.mdに分割）ため、内容の一致（ルールの意味）を見るのであって
-   バイト単位の一致を求めない。
+4. `.github/instructions/*.instructions.md`（Copilot のパス別自動適用ルール）に対応する内容が
+   ルーター文書の「File-Specific Guidelines」セクションにも反映されているか確認する。Copilot は
+   `applyTo` で自動適用されるが、Claude Code と Codex はルーター文書の記述しか見ないため、
+   ここが揃っていないとツール間で挙動が変わる。
 
-5. `.github/instructions/*.instructions.md`（パス別自動適用ルール）に対応する内容が
-   `CLAUDE.md` の「File-Specific Guidelines」セクションにも反映されているか確認する。
-
-6. 最後に検証する。
+5. 最後に検証する。
 
    ```bash
    uv run python scripts/sync_agent_docs.py --check
@@ -88,9 +84,10 @@ Claude Code (`.claude/`) と GitHub Copilot (`.github/`, `AGENTS.md`) は、共�
 
 ## ルール
 
-- 機械的にコピーできる内容（10個の共通スキル）は必ずスクリプト経由で同期する。
-  手作業でコピーすると改行コードやリンク表記の差分が再発する。
+- 機械的にコピーできる内容（ルーター文書の本文、タスクスキルの本文）は必ずスクリプト経由で
+  同期する。手作業でコピーすると改行コードや空白の差分が再発する。
+- skill 本体（`.claude/skills/<name>/`）はミラーを持たない。ここに他陣営向けのコピーを作らない。
 - 言語・frontmatter書式が意図的に異なるファイル同士は、内容の**意味**を合わせることを
   目的とし、逐語的な同一化はしない。
-- 新規スキルの追加や構成変更は、必ずユーザーに意図を確認してから両陣営に反映する。
+- 新規スキルの追加や構成変更は、必ずユーザーに意図を確認してから反映する。
 - 最後に、変更したファイルと解消した差分を日本語で要約する。

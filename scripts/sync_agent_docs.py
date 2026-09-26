@@ -1,31 +1,35 @@
-"""Claude Code と GitHub Copilot の共通スキル/タスクスキルを同期するスクリプト。
+"""エージェント向けルーター文書とタスクスキルを同期するスクリプト。
 
 このリポジトリの設計(README.md参照)では、以下の2種類の対応関係がある。
 
-1. 通常スキル: `.claude/skills/<name>/SKILL.md` と `.github/skills/<name>/SKILL.md` は
-   スキル内リンクの相対パス表記を除いて同一内容であるべき。
+1. ルーター文書: `CLAUDE.md`(Claude Code)と `AGENTS.md`(GitHub Copilot / Codex)は、
+   `## Hard Rules` 以降の本文が完全に同一であるべき。冒頭の導入文と、Claude 固有の
+   `## Skills`(skill の @import)ブロックだけが各ファイル固有。
 2. タスク実行スキル: `.claude/skills/<name>/SKILL.md` の frontmatter に
    `disable-model-invocation: true` があるスキルは、モデルからの自動起動ができない
-   スラッシュコマンド専用スキルであり、`.github/skills/` ではなく
-   `.github/prompts/<name>.prompt.md` に対応する。frontmatterの書式
-   (`name`/`disable-model-invocation` ⇔ `agent: "agent"`)を変換しつつ本文を同期する。
-   本文中の以下は自動で扱う:
+   スラッシュコマンド専用スキルであり、`.github/prompts/<name>.prompt.md` に対応する。
+   frontmatterの書式(`name`/`disable-model-invocation` ⇔ `agent: "agent"`)を変換しつつ
+   本文を同期する。本文中の以下は自動で扱う:
    - Copilotの `${input:...}` プレースホルダとClaudeの「引数の確認」箇条書きは
      「保護ゾーン」として、削除・上書きせず相手側の既存内容を保持する。
-   - `CLAUDE.md`⇔`AGENTS.md`、`.claude/skills/`⇔`.github/skills/` の相互参照を変換する
-     (両陣営を意図的に併記するメタ文書は `REFERENCE_REWRITE_EXEMPT` で除外)。
+   - `CLAUDE.md`⇔`AGENTS.md` の相互参照を変換する(両陣営を意図的に併記するメタ文書は
+     `REFERENCE_REWRITE_EXEMPT` で除外)。
+
+skill 本体(`.claude/skills/<name>/`)はミラーを持たない。Claude Code・Copilot・Codex の
+いずれも `.claude/skills/` を直接参照する(Codex 向けに `.agents/skills` がシンボリック
+リンクを張っている)ため、同期対象は上記2種類だけである。
 
 同期方向は **必ず `--from claude` / `--from github` で明示する**。ファイルの更新日時
 (mtime)は `git clone` や一括生成で同一値になり信頼できないため、方向の自動判定は行わない。
 
 CIブロッキング:
-- 通常スキルのドリフトのみ終了コード1でCIを止める。
+- ルーター文書のドリフトのみ終了コード1でCIを止める。
 - タスクスキル⇔prompt間のドリフトは検出・報告のみ(終了コードに影響しない)。保護ゾーンの
   検出に失敗した場合などは理由付きで報告され、書き込みを見送る(安全側に倒す)。
 
 対象外(このスクリプトでは同期しない):
-- 片側にのみ存在する通常スキルディレクトリの新規ポーティング。内容の取捨選択が必要なため
-  警告のみ行う。差分の解消には `sync-agent-docs` スキル(エージェント)を使うこと。
+- タスクスキルの新規ポーティング。内容の取捨選択が必要なため警告のみ行う。差分の解消には
+  `sync-agent-docs` スキル(エージェント)を使うこと。
 
 Usage:
     uv run python scripts/sync_agent_docs.py --check           # 書き込みせず差分検出(CI向け)
@@ -43,15 +47,17 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLAUDE_SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
-GITHUB_SKILLS_DIR = REPO_ROOT / ".github" / "skills"
 GITHUB_PROMPTS_DIR = REPO_ROOT / ".github" / "prompts"
 
-FRONTMATTER_DELIM = "---"
+# ルーター文書。Claude Code は CLAUDE.md を、Copilot / Codex は AGENTS.md を読む。
+CLAUDE_ROUTER_PATH = REPO_ROOT / "CLAUDE.md"
+AGENTS_ROUTER_PATH = REPO_ROOT / "AGENTS.md"
+# 両者で一致していなければならない本文の開始見出し
+ROUTER_BODY_START = "## Hard Rules (Always Apply)"
+# CLAUDE.md にだけ存在する末尾セクション(skill の @import)
+CLAUDE_ONLY_SECTION = "## Skills"
 
-# Claude形式のスキル内リンク: `.claude/skills/<name>/SKILL.md`
-CLAUDE_LINK_PATTERN = re.compile(r"\.claude/skills/([\w-]+)/SKILL\.md")
-# GitHub形式のスキル内リンク: `../<name>/SKILL.md`
-GITHUB_LINK_PATTERN = re.compile(r"\.\./([\w-]+)/SKILL\.md")
+FRONTMATTER_DELIM = "---"
 
 # frontmatterのdescriptionにある `引数: <a> <b>` 形式から引数名リストを取り出す
 ARG_LIST_PATTERN = re.compile(r"引数:\s*((?:<[\w-]+>\s*)+)")
@@ -64,7 +70,6 @@ INPUT_PLACEHOLDER_PATTERN = re.compile(r"\$\{input:[\w-]+(?::[^}]*)?\}")
 # (Claude側の語, GitHub側の語)。
 TASK_REFERENCE_MAP = [
     ("CLAUDE.md", "AGENTS.md"),
-    (".claude/skills/", ".github/skills/"),
 ]
 
 # 相互参照の書き換えを行わないタスクスキル。両陣営を意図的に併記するメタ文書
@@ -75,16 +80,6 @@ REFERENCE_REWRITE_EXEMPT = {"sync-agent-docs"}
 # --------------------------------------------------------------------------------------
 # 低レベルユーティリティ
 # --------------------------------------------------------------------------------------
-def claude_to_github(text: str) -> str:
-    """Claude形式のスキル内リンクをGitHub Copilot形式(相対パス)に変換する。"""
-    return CLAUDE_LINK_PATTERN.sub(r"../\1/SKILL.md", text)
-
-
-def github_to_claude(text: str) -> str:
-    """GitHub Copilot形式のスキル内リンクをClaude形式に変換する。"""
-    return GITHUB_LINK_PATTERN.sub(r".claude/skills/\1/SKILL.md", text)
-
-
 def normalize(text: str) -> str:
     """改行コード(CRLF/CR)と末尾改行を統一し、内容比較・書き込み用に正規化する。"""
     return text.replace("\r\n", "\n").replace("\r", "\n").rstrip("\n") + "\n"
@@ -284,7 +279,7 @@ def insert_block_at_para(remainder: str, block: str, index: int) -> str:
 
 
 def rewrite_task_references(text: str, *, to_prompt: bool, name: str) -> str:
-    """タスクスキル本文中の `CLAUDE.md`/`.claude/skills/` などの相互参照を変換する。
+    """タスクスキル本文中の `CLAUDE.md`⇔`AGENTS.md` のような相互参照を変換する。
 
     `REFERENCE_REWRITE_EXEMPT` に登録されたスキル(両陣営を意図的に併記するメタ文書)は
     変換しない。それ以外は `TASK_REFERENCE_MAP` に従って単純置換する。
@@ -410,15 +405,6 @@ def prompt_to_claude_task_skill(
 # ペアの探索
 # --------------------------------------------------------------------------------------
 @dataclass
-class SkillPair:
-    """両陣営に存在する同名の通常スキルのペア。"""
-
-    name: str
-    claude_path: Path
-    github_path: Path
-
-
-@dataclass
 class TaskSkillPair:
     """Claudeタスクスキルと、対応するCopilot promptのペア。"""
 
@@ -427,30 +413,9 @@ class TaskSkillPair:
     prompt_path: Path
 
 
-def discover_skill_names(directory: Path) -> set[str]:
-    """指定ディレクトリ配下の `<name>/SKILL.md` からスキル名の集合を取得する。"""
-    return {p.parent.name for p in directory.glob("*/SKILL.md")}
-
-
 def task_skill_names() -> set[str]:
     """`.claude/skills/` 配下のタスクスキル名の集合を返す。"""
     return {p.parent.name for p in CLAUDE_SKILLS_DIR.glob("*/SKILL.md") if is_task_skill(p)}
-
-
-def discover_pairs() -> list[SkillPair]:
-    """両ディレクトリに存在する通常スキル名からペアを検出する(タスクスキルは除く)。"""
-    tasks = task_skill_names()
-    shared = sorted(
-        (discover_skill_names(CLAUDE_SKILLS_DIR) & discover_skill_names(GITHUB_SKILLS_DIR)) - tasks
-    )
-    return [
-        SkillPair(
-            name=name,
-            claude_path=CLAUDE_SKILLS_DIR / name / "SKILL.md",
-            github_path=GITHUB_SKILLS_DIR / name / "SKILL.md",
-        )
-        for name in shared
-    ]
 
 
 def discover_task_skill_pairs() -> list[TaskSkillPair]:
@@ -465,14 +430,6 @@ def discover_task_skill_pairs() -> list[TaskSkillPair]:
     ]
 
 
-def find_one_sided_skills() -> tuple[list[str], list[str]]:
-    """片側にしか存在しない(タスクスキルを除く)通常スキル名を検出する。"""
-    tasks = task_skill_names()
-    claude_names = discover_skill_names(CLAUDE_SKILLS_DIR) - tasks
-    github_names = discover_skill_names(GITHUB_SKILLS_DIR)
-    return sorted(claude_names - github_names), sorted(github_names - claude_names)
-
-
 def find_orphan_prompts() -> list[str]:
     """タスクスキルに対応しない `.github/prompts/*.prompt.md` を検出する。"""
     tasks = task_skill_names()
@@ -483,31 +440,67 @@ def find_orphan_prompts() -> list[str]:
 # --------------------------------------------------------------------------------------
 # 同期処理
 # --------------------------------------------------------------------------------------
-def sync_pair(pair: SkillPair, *, check_only: bool, direction: str | None) -> str:
-    """通常スキル1ペアを比較し、必要なら方向に従ってもう一方へ書き込む。
+def split_router_doc(text: str) -> tuple[str, str, str]:
+    """ルーター文書を (冒頭, 共通本文, 末尾) の3つに分ける。
+
+    共通本文は `ROUTER_BODY_START` 以降で、CLAUDE.md だけが持つ `CLAUDE_ONLY_SECTION`
+    の手前まで。冒頭(導入文)と末尾は各ファイル固有なので比較・同期の対象外。
 
     Args:
-        pair: 同期対象のスキルペア。
+        text: CLAUDE.md または AGENTS.md の全体テキスト。
+
+    Returns:
+        (冒頭, 共通本文, 末尾)。末尾は直前の空行を含み、CLAUDE.md 以外では空文字列。
+        3つを連結すると元のテキスト(改行コード正規化後)に戻る。
+
+    Raises:
+        ValueError: `ROUTER_BODY_START` の見出しが見つからない場合。
+    """
+    normalized = normalize(text)
+    start = normalized.find(ROUTER_BODY_START)
+    if start < 0:
+        raise ValueError(f"見出し `{ROUTER_BODY_START}` が見つからない")
+    end = normalized.find(f"\n{CLAUDE_ONLY_SECTION}", start)
+    if end < 0:
+        return normalized[:start], normalized[start:].rstrip("\n") + "\n", ""
+    return normalized[:start], normalized[start:end].rstrip("\n") + "\n", normalized[end:]
+
+
+def write_preserving_eol(path: Path, text: str) -> None:
+    """既存ファイルの改行コード(LF/CRLF)を保ったままテキストを書き込む。"""
+    # CRLF のファイルを LF で書き戻すと差分が全行に広がるため、元の形式に合わせる
+    was_crlf = b"\r\n" in path.read_bytes() if path.exists() else False
+    body = text.replace("\r\n", "\n")
+    path.write_bytes((body.replace("\n", "\r\n") if was_crlf else body).encode("utf-8"))
+
+
+def sync_router_docs(*, check_only: bool, direction: str | None) -> str:
+    """CLAUDE.md と AGENTS.md の共通本文を比較し、必要なら方向に従って書き込む。
+
+    Args:
         check_only: Trueなら書き込まず差分の有無のみ判定する。
-        direction: "claude" ならClaude側を、"github" ならGitHub側を正とする。
+        direction: "claude" なら CLAUDE.md を、"github" なら AGENTS.md を正とする。
             check_only=False のときは必須。
 
     Returns:
         "in_sync" | "updated_claude" | "updated_github" | "drift"。
     """
-    claude_text = normalize(pair.claude_path.read_text(encoding="utf-8"))
-    github_text = normalize(pair.github_path.read_text(encoding="utf-8"))
+    claude_head, claude_body, claude_tail = split_router_doc(
+        CLAUDE_ROUTER_PATH.read_text(encoding="utf-8")
+    )
+    agents_head, agents_body, agents_tail = split_router_doc(
+        AGENTS_ROUTER_PATH.read_text(encoding="utf-8")
+    )
 
-    # リンク表記・改行コードの差だけを吸収した上で内容を比較する
-    if claude_to_github(claude_text) == github_text:
+    if claude_body == agents_body:
         return "in_sync"
     if check_only:
         return "drift"
 
     if direction == "claude":
-        pair.github_path.write_text(claude_to_github(claude_text), encoding="utf-8")
+        write_preserving_eol(AGENTS_ROUTER_PATH, agents_head + claude_body + agents_tail)
         return "updated_github"
-    pair.claude_path.write_text(github_to_claude(github_text), encoding="utf-8")
+    write_preserving_eol(CLAUDE_ROUTER_PATH, claude_head + agents_body + claude_tail)
     return "updated_claude"
 
 
@@ -567,36 +560,21 @@ def sync_task_skill_pair(
 # --------------------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------------------
-def _run_shared_skills(*, check_only: bool, direction: str | None) -> dict[str, list[str]]:
-    """通常スキルを同期し、結果を表示して集計を返す。"""
-    print("--- Shared skills (.claude/skills <-> .github/skills) ---")
-    results: dict[str, list[str]] = {
-        "in_sync": [],
-        "updated_claude": [],
-        "updated_github": [],
-        "drift": [],
-    }
-    for pair in discover_pairs():
-        results[sync_pair(pair, check_only=check_only, direction=direction)].append(pair.name)
-
-    for name in results["in_sync"]:
-        print(f"OK     (in sync):            {name}")
-    for name in results["updated_claude"]:
-        print(f"SYNCED (github -> claude):   {name}")
-    for name in results["updated_github"]:
-        print(f"SYNCED (claude -> github):   {name}")
-    for name in results["drift"]:
-        print(f"DRIFT  (CI-blocking — run --from claude/github to sync): {name}")
-
-    claude_only, github_only = find_one_sided_skills()
-    if claude_only or github_only:
-        print("\nWARNING: the following skills exist on only one side and were NOT synced")
-        print("         (structural additions need judgment — use the `sync-agent-docs` skill):")
-        for name in claude_only:
-            print(f"  - .claude/skills/{name}/  (no mirror under .github/skills/)")
-        for name in github_only:
-            print(f"  - .github/skills/{name}/  (no mirror under .claude/skills/)")
-    return results
+def _run_router_docs(*, check_only: bool, direction: str | None) -> str:
+    """ルーター文書を同期し、結果を表示して状態を返す。"""
+    print("--- Router docs (CLAUDE.md <-> AGENTS.md) ---")
+    status = sync_router_docs(check_only=check_only, direction=direction)
+    message = {
+        "in_sync": "OK     (in sync):            CLAUDE.md / AGENTS.md",
+        "updated_claude": "SYNCED (AGENTS.md -> CLAUDE.md)",
+        "updated_github": "SYNCED (CLAUDE.md -> AGENTS.md)",
+        "drift": (
+            "DRIFT  (CI-blocking — run --from claude/github to sync): "
+            f"CLAUDE.md / AGENTS.md の `{ROUTER_BODY_START}` 以降が一致しない"
+        ),
+    }[status]
+    print(message)
+    return status
 
 
 def _run_task_skills(*, check_only: bool, direction: str | None) -> dict[str, list[str]]:
@@ -641,7 +619,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="書き込みを行わず、通常スキルに差分があれば終了コード1で報告する(CI向け)",
+        help="書き込みを行わず、ルーター文書に差分があれば終了コード1で報告する(CI向け)",
     )
     parser.add_argument(
         "--from",
@@ -655,17 +633,17 @@ def main(argv: list[str] | None = None) -> int:
     if not args.check and args.direction is None:
         parser.error("書き込みには --from claude / --from github の指定が必要です(または --check)")
 
-    shared = _run_shared_skills(check_only=args.check, direction=args.direction)
+    router_status = _run_router_docs(check_only=args.check, direction=args.direction)
     tasks = _run_task_skills(check_only=args.check, direction=args.direction)
 
-    updated = sum(len(shared[k]) for k in ("updated_claude", "updated_github")) + sum(
-        len(tasks[k]) for k in ("updated_claude", "updated_prompt")
-    )
+    router_updated = router_status in ("updated_claude", "updated_github")
+    updated = int(router_updated) + sum(len(tasks[k]) for k in ("updated_claude", "updated_prompt"))
+    router_drift = router_status == "drift"
     task_drift = len(tasks["drift"])
-    total = len(discover_pairs()) + len(discover_task_skill_pairs())
+    total = 1 + len(discover_task_skill_pairs())
     print(
         f"\n{total} pair(s) checked, {updated} updated, "
-        f"{len(shared['drift'])} shared drift, {task_drift} task drift."
+        f"{int(router_drift)} router drift, {task_drift} task drift."
     )
     if task_drift:
         print(
@@ -673,8 +651,8 @@ def main(argv: list[str] | None = None) -> int:
             "ある場合は上に表示される。`sync-agent-docs` スキルで内容を確認すること。"
         )
 
-    # 通常スキルのドリフトのみCIブロッキング対象
-    return 1 if shared["drift"] else 0
+    # ルーター文書のドリフトのみCIブロッキング対象
+    return 1 if router_drift else 0
 
 
 if __name__ == "__main__":

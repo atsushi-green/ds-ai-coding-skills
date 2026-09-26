@@ -1,7 +1,7 @@
 ---
 applyTo: "**/*.sql"
 ---
-Follow `.github/skills/sql-analysis/SKILL.md` for all SQL files:
+Follow `.claude/skills/sql-analysis/SKILL.md` for all SQL files:
 - Use explicit column names; avoid SELECT *.
 - Use CTEs for readability.
 - Add date filters for large tables.

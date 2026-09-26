@@ -19,6 +19,22 @@ Use this skill when summarizing analysis results, experiment outcomes, or model 
 4. **解釈** — Provide interpretations and implications.
 5. **制約・注意点** — Mention limitations, caveats, and possible bias.
 
+A fill-in-the-blank report skeleton with all of the above, plus the reproducibility
+section, is in [references/report-template.md](.claude/skills/analysis-reporting/references/report-template.md).
+
+## Diagnostics Summary（診断サマリー）
+
+When any statistical / ML / causal / simulation / optimization method was applied, add a **診断サマリー**
+section between 事実 and 解釈, containing the table defined by the matching `*-diagnostics` skill:
+
+| 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |
+|---|---|---|---|---|
+
+- 判定 is one of `OK` / `要対処` / `確認`（人間の判断待ち）. Every `要対処` needs a 次アクション.
+- The analysis code only saves the figures and prints (or saves) the diagnostic values as a table of metric names and numbers. Copy 実測値 from that output, then write 合格基準, 判定 and 次アクション in the report by reading the values and figures against the skill's criteria. Do not build verdict strings, criteria text or next actions with if-branches or f-strings in the analysis code (an `assert` that stops an invalid analysis, such as an SRM check, is fine).
+- Include the table even when every item is OK.
+- Link the figure directory (`outputs/diagnostics/<YYYYMMDD-HHMM>_<skill>/`) instead of embedding figures.
+
 ## Required Context
 
 Include the following when relevant:

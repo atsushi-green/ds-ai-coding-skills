@@ -5,7 +5,7 @@ description: "SQLクエリの正確性と安全性をレビューする"
 
 # Skill: Review SQL
 
-[sql-analysis](.github/skills/sql-analysis/SKILL.md) のチェックリストを使って、提示されたSQLクエリをレビューする。
+[sql-analysis](.claude/skills/sql-analysis/SKILL.md) のチェックリストを使って、提示されたSQLクエリをレビューする。
 
 レビュー対象のクエリが渡されていない場合は、ユーザーにレビューしたいSQLクエリを貼り付けるよう依頼する。
 

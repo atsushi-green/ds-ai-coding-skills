@@ -5,7 +5,7 @@ description: "分析結果を日本語でまとめる"
 
 # Skill: Summarize Analysis
 
-[analysis-reporting](.github/skills/analysis-reporting/SKILL.md) に従って、分析結果をまとめる。
+[analysis-reporting](.claude/skills/analysis-reporting/SKILL.md) に従って、分析結果をまとめる。
 
 要約対象の分析や発見事項が渡されていない場合は、ユーザーにどの分析をまとめるか確認する（例: notebookのパス、スクリプトの出力、または発見事項を直接貼り付けてもらう）。
 

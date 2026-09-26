@@ -14,7 +14,8 @@ disable-model-invocation: true
 
 1. `CLAUDE.md` のルーティングテーブルやルールに更新が必要か確認する。
 2. `.claude/skills/*/SKILL.md` に更新が必要なものがないか確認する。
-3. `docs/agent/*.md` に更新が必要なものがないか確認する。
+3. `docs/agent/*.md`（プロジェクト概要・データカタログ・指標定義・診断 reference の雛形）に
+   更新が必要なものがないか確認する。作業手順そのものは skill 側に書き、ここには置かない。
 
 ## ルール
 

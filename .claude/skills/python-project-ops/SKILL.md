@@ -38,3 +38,22 @@ bash scripts/run_quality_checks.sh  # Run all quality checks
 2. After adding code, run `uv run ruff check .` and `uv run ruff format .`.
 3. Before committing, run `uv run pytest` and `uv run mypy src`.
 4. For notebook execution in CI or automation, prefer `papermill`.
+
+## Tests and Tool Configuration
+
+- Place tests under `tests/`; keep them fast by minimizing external dependencies.
+- `ruff` settings live in the `[tool.ruff]` section of `pyproject.toml`.
+- `mypy` settings live in the `[tool.mypy]` section of `pyproject.toml`.
+- Verify notebooks re-run from a clean kernel — see [notebook-workflow skill](.claude/skills/notebook-workflow/SKILL.md).
+
+## Validation Scripts
+
+These run in GitHub Actions CI, and can be run locally before committing.
+
+```bash
+uv run python scripts/check_no_raw_data_commit.py    # rawデータのコミットを検知
+uv run python scripts/check_no_sensitive_patterns.py # 秘密情報のパターンを検知
+uv run python scripts/validate_agent_docs.py         # エージェント文書の必須ファイル確認
+uv run python scripts/sync_agent_docs.py --check     # CLAUDE.md / AGENTS.md のドリフト検出
+bash scripts/run_quality_checks.sh                   # 上記を含む一括実行
+```
