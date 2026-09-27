@@ -1,6 +1,31 @@
-# データサイエンス分析プロジェクトテンプレート
+<div align="center">
 
-GitHub Copilot / Copilot Agent Mode / Copilot Cloud Agent、Claude Code、Codex と連携し、安全かつ一貫したデータ分析作業を行うためのリポジトリテンプレートです。
+<img src="assets/logo.svg" width="120" alt="ds-ai-coding-skills logo">
+
+# ds-ai-coding-skills
+
+[![CI](https://img.shields.io/github/actions/workflow/status/atsushi-green/ds-ai-coding-skills/ci.yml?branch=main&style=flat-square&label=CI&color=2c7a6d)](https://github.com/atsushi-green/ds-ai-coding-skills/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11-f26649?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![uv](https://img.shields.io/badge/managed%20by-uv-f26649?style=flat-square&logo=uv&logoColor=white)](https://docs.astral.sh/uv/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-f26649?style=flat-square&logo=ruff&logoColor=white)](https://docs.astral.sh/ruff/)
+[![Polars](https://img.shields.io/badge/dataframe-polars-f26649?style=flat-square&logo=polars&logoColor=white)](https://pola.rs/)
+<br>
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-ready-f26649?style=flat-square&logo=claude&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
+[![GitHub Copilot](https://img.shields.io/badge/GitHub%20Copilot-ready-f26649?style=flat-square&logo=githubcopilot&logoColor=white)](https://github.com/features/copilot)
+[![Codex](https://img.shields.io/badge/Codex-ready-f26649?style=flat-square&logo=openai&logoColor=white)](https://openai.com/codex/)
+
+
+</div>
+
+---
+
+## 関連リンク
+
+| | リンク | 内容 |
+|:-:|---|---|
+| 📊 | [**診断図ギャラリー**](https://atsushi-green.github.io/ds-ai-coding-skills/) | 各 `*-diagnostics` skill が「必ず出す」と定めた図を、実データで出力して並べたもの |
+| 📝 | [**データサイエンティストのためのAGENTS.mdとSkills**](https://zenn.dev/green_tea/articles/d310e5cf809190) | ルーター文書（`AGENTS.md`）と、Python・SQL・データ処理・可視化などの基本 skill の設計 |
+| 📝 | [**続・データサイエンティストのためのSkills:分析手法×診断可視化セット**](https://zenn.dev/green_tea/articles/55d2761106ee74) | `*-diagnostics` skill 群（図と値をセットで出させる仕組み）の設計と動作例 |
 
 ## セットアップ
 
@@ -128,7 +153,7 @@ IDE（JetBrains・Visual Studio・Xcode・Eclipse）で使う場合は、`AGENTS
 - 図は `outputs/diagnostics/<YYYYMMDD-HHMM>_<短縮名>/` に保存し（gitignore 済み）、報告には `| 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |` の表だけを載せます（判定は `OK` / `要対処` / `確認`）
 - 手法やルーターを追加する手順と雛形は [docs/agent/diagnostics-reference-template.md](docs/agent/diagnostics-reference-template.md)
 - skill が意図どおりに発火するか（頼んだ手法の references を読み、頼んでいない references は読まないか）は、[scripts/skill_eval/](scripts/skill_eval/README.md) のハーネスで確かめられます。ケースごとに `claude -p` を起動するので手動で実行します（費用の目安は同 README）。CI では `cases.yaml` と references の整合性を見るテストだけが走ります
-- 各 reference が「必ず出す」と定めた図を実データで出力したギャラリーが [docs/gallery/](docs/gallery/) にあります（5 スキル・17 手法・45 図）。`.github/workflows/pages.yml` で GitHub Pages に公開します
+- 各 reference が「必ず出す」と定めた図を実データで出力したギャラリーを [GitHub Pages](https://atsushi-green.github.io/ds-ai-coding-skills/) で公開しています（5 スキル・17 手法・45 図。ソースは [docs/gallery/](docs/gallery/)）。`.github/workflows/pages.yml` でデプロイします
 - references 内のコード抜粋が使うライブラリ（statsmodels / scikit-learn 1.8 / lifelines / cmdstanpy 2.39 など）は本リポジトリの `pyproject.toml` に含めていないので、使う手法に応じて `uv add` してください
 
 | ルーター（第 1 段） | 家族 | references（第 2 段） |
