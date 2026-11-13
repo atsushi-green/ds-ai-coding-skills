@@ -23,10 +23,10 @@ Use this skill when reading from or writing to local files.
 
 `src/analysis_project/paths.py` provides:
 
-- `get_repo_root()` — リポジトリルートの `Path`
-- `data_dir()` — `data/` ディレクトリの `Path`
-- `outputs_dir()` — `outputs/` ディレクトリの `Path`
-- `ensure_parent_dir(path)` — 親ディレクトリを作成してパスを返す
+- `get_repo_root()` — リポジトリルート（`pyproject.toml` のあるディレクトリ）の `Path`
+- `data_dir()` — `data/` ディレクトリの `Path`（環境変数 `DATA_DIR` があればそちら）
+- `outputs_dir()` — `outputs/` ディレクトリの `Path`（環境変数 `OUTPUT_DIR` があればそちら）
+- `ensure_parent_dir(path)` — 親ディレクトリを作成してパスを返す（`data/raw/`・`data/external/` の配下なら `ValueError`）
 
 ## Examples
 
