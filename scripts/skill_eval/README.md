@@ -64,7 +64,11 @@ Titanic 以外の題材（rossi 再犯データ、CO2 濃度、A/B テスト、�
 
 ## 実行
 
-リポジトリ直下で実行します。`claude` にログイン済みであることが前提です。
+リポジトリ直下で実行します。前提は次の 2 つです。
+
+- `claude` にログイン済みであること
+- Titanic の `train.csv`（[Kaggle](https://www.kaggle.com/competitions/titanic/data)）を `data/raw/train.csv` に置いてあること。
+  生データなのでリポジトリには含めていません。無いと sandbox を作る段階で `FileNotFoundError` になります
 
 ```bash
 # ケース一覧
@@ -95,7 +99,7 @@ CMDSTAN=/path/to/cmdstan uv run python scripts/run_skill_eval.py run --only mcmc
 uv run python scripts/run_skill_eval.py report outputs/skill_eval/<run_id>
 ```
 
-費用の目安は 1 ケースあたり数ドル・数分〜数十分です（全 67 ケースを 1 回ずつ回すと、上限いっぱいなら 300 ドル超）。
+費用の目安は 1 ケースあたり数ドル・数分〜数十分です（全 68 ケースを 1 回ずつ回すと、上限いっぱいなら 300 ドル超）。
 まず `--only` や `--kind` で数件に絞って試してください。`cases.yaml` の `max_budget_usd`（既定 5 ドル）と
 `timeout_min`（既定 40 分）で 1 ケースごとに上限を掛けています。
 
