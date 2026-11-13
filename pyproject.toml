@@ -14,7 +14,7 @@ dependencies = [
     "python-dotenv",
     "pydantic",
     "scikit-learn>=1.8.0",
-    "japanize-matplotlib",
+    "matplotlib-fontja>=1.1.0",
 ]
 
 [build-system]
