@@ -11,6 +11,7 @@
 
 - lifelines（`KaplanMeierFitter`、`CoxPHFitter`、`WeibullAFTFitter` / `LogNormalAFTFitter` / `LogLogisticAFTFitter`、`AalenJohansenFitter`、`add_at_risk_counts`、`proportional_hazard_test`、`logrank_test`、`restricted_mean_survival_time`、`k_fold_cross_validation`、`plotting.qq_plot`）
 - 未導入なら `uv add lifelines`。scikit-survival は予測用途（`concordance_index_censored`）で併用可。Fine-Gray 回帰は lifelines に無いので「R 推奨（cmprsk / tidycmprsk）」と 1 行書く
+- lifelines は pandas 3 に対応していない（0.30.3 以降は `pandas<3` を要求する）。`uv add lifelines` なら pandas ごと解決されるが、pandas 3.1 に古い lifelines（0.30.0）が組み合わさると `add_at_risk_counts` が `TypeError: only 0-dimensional arrays can be converted to Python scalars` で落ちる。そのときは `pandas<3` にする
 
 ## 必ず出す図
 

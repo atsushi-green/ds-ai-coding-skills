@@ -86,7 +86,8 @@ y_f = y.interpolate(limit_area="inside")  # adfuller / kpss は NaN を受け付
 adf_p, kpss_p = adfuller(y_f)[1], kpss(y_f, regression="c", nlags="auto")[1]  # KPSS p は表の範囲で切り詰め
 stl = STL(y, period=12).fit()  # STL と SARIMAX は欠測を許容するので原系列のまま渡す
 res = SARIMAX(y_train, order=(1, 1, 1), seasonal_order=(0, 1, 1, 12)).fit(disp=0)
-lb = acorr_ljungbox(res.resid[13:], lags=[12, 24, 36], model_df=3)  # model_df = p+q+P+Q = 1+1+0+1、先頭は d+D*s 分を捨てる
+# model_df = p+q+P+Q = 1+1+0+1、先頭は d+D*s 分を捨てる。欠測期の残差は NaN なので落としてから渡す
+lb = acorr_ljungbox(res.resid[13:].dropna(), lags=[12, 24, 36], model_df=3)
 
 # 予測と予測区間（h 期先の多段先予測）
 fcast = res.get_forecast(steps=len(y_test))
@@ -136,7 +137,7 @@ n_cp = [len(algo.predict(pen=p)) - 1 for p in pens]  # ペナルティ vs 変化
 - ベースライン（naive・季節 naive）比較なしに MAE / RMSE を報告しない。季節 naive に負ける複雑モデルは珍しくない
 - コレログラムを見ずに季節周期を決め打ちしない。KPSS の p 値は表の範囲で切り詰められる（`p > 0.1` のように報告）
 - Prophet のデフォルト予測区間はトレンドの不確実性と観測ノイズしか含まず、季節性の不確実性は入らない（入れるには `mcmc_samples > 0` で完全ベイズ推定）。狭く出やすいので、必ず実測カバレッジで確かめる
-- 欠測への耐性はライブラリで揃っていない。`STL` と `SARIMAX` は NaN を含む系列をそのまま扱えるが、`adfuller` は `MissingDataError`、`kpss` は「cannot convert float NaN to integer」という原因の読めない例外で落ちる。検定に渡す前に欠測の扱いを決める
+- 欠測への耐性はライブラリで揃っていない。`STL` と `SARIMAX` は NaN を含む系列をそのまま扱えるが、`adfuller` は `MissingDataError`、`kpss` は「cannot convert float NaN to integer」という原因の読めない例外で落ちる。`acorr_ljungbox` は例外を出さず、統計量も p 値も NaN で返す（学習期間に欠測があると `SARIMAX` の残差に NaN が残る）。検定に渡す前に欠測の扱いを決める
 - 対数変換して予測したら逆変換時のバイアス（単純な exp は中央値予測）に言及する
 - 外生変数は「予測時点で入手可能か」を確認する（実績気温は使えない。予報なら可）。これもリーク
 - VAR の Granger 因果とインパルス応答を因果効果と読まない。前者は予測上の先行関係、後者は直交化の順序という仮定の産物

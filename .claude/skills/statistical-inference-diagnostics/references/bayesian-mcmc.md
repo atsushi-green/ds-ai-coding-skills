@@ -10,19 +10,21 @@
 ## ライブラリ
 
 - **cmdstanpy**（サンプリング）+ **ArviZ**（診断）を標準とする。Stan モデルは `.stan` ファイルに書き `CmdStanModel(stan_file=...)` でコンパイル
-- 診断は `az.from_cmdstanpy(fit)` で ArviZ に一元化。**ArviZ 1.x で関数名と戻り値が変わった**（`plot_ppc` → `plot_ppc_dist`、`plot_trace` → `plot_trace_dist` ほか。図は PlotCollection を返し `pc.savefig(path)` で保存、Figure は `pc.viz["figure"].item()`）。下の取得例は 1.x。0.x のコードを動かすなら `arviz<1` に固定する
+- 診断は `az.from_cmdstanpy(fit)` で ArviZ に一元化。**ArviZ 1.x で関数名と戻り値が変わった**（`plot_ppc` → `plot_ppc_dist`、`plot_trace` → `plot_trace_dist` ほか。図は PlotCollection を返し `pc.savefig(path)` で保存、Figure は `pc.viz["figure"].item()`）。下の取得例は 1.x。1.x は Python 3.12 以上でしか入らない（3.11 では `uv add arviz` が 0.x になる）。0.x のコードを動かすなら `arviz<1` に固定する
 - cmdstanpy が未導入なら `uv add cmdstanpy arviz`。CmdStan 本体は先に `uv run python -c "import cmdstanpy; print(cmdstanpy.cmdstan_path())"` で既存のもの（環境変数 `CMDSTAN` か `~/.cmdstan`）を探し、見つからないときだけ `uv run install_cmdstan`（C++ ビルドが要る）。既存の CmdStan がある場所へ `install_cmdstan` を実行しない（ダウンロードし直して上書きし、ビルド済みのものが壊れる）
 
 ```python
-from cmdstanpy import CmdStanModel
 import arviz as az  # 1.x
+import numpy as np
+from cmdstanpy import CmdStanModel
 
 fit = CmdStanModel(stan_file="model.stan").sample(
     data=data, chains=4, iter_warmup=1000, iter_sampling=2000, adapt_delta=0.9, seed=0
 )
 print(fit.diagnose())  # cmdstanpy の組み込み診断を必ず実行し、出力をそのまま報告に貼る
 idata = az.from_cmdstanpy(  # 事後予測の図は観測と同じ変数名・次元を要求するので dims をそろえる
-    fit, posterior_predictive="y_rep", log_likelihood="log_lik", observed_data={"y": data["y"]},
+    fit, posterior_predictive="y_rep", log_likelihood="log_lik",
+    observed_data={"y": np.asarray(data["y"])},  # list のまま渡すと次元が合わず ValueError になる
     dims={"y": ["obs_id"], "y_rep": ["obs_id"], "log_lik": ["obs_id"]},
 )
 idata["posterior_predictive"] = idata["posterior_predictive"].to_dataset().rename({"y_rep": "y"})
