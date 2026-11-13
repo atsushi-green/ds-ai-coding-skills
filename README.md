@@ -5,7 +5,7 @@
 # ds-ai-coding-skills
 
 [![CI](https://img.shields.io/github/actions/workflow/status/atsushi-green/ds-ai-coding-skills/ci.yml?branch=main&style=flat-square&label=CI&color=2c7a6d)](https://github.com/atsushi-green/ds-ai-coding-skills/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.11-f26649?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.13-f26649?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![uv](https://img.shields.io/badge/managed%20by-uv-f26649?style=flat-square&logo=uv&logoColor=white)](https://docs.astral.sh/uv/)
 [![Ruff](https://img.shields.io/badge/lint-ruff-f26649?style=flat-square&logo=ruff&logoColor=white)](https://docs.astral.sh/ruff/)
 [![Polars](https://img.shields.io/badge/dataframe-polars-f26649?style=flat-square&logo=polars&logoColor=white)](https://pola.rs/)
@@ -31,7 +31,7 @@
 
 ### 前提条件
 
-- Python 3.11
+- Python 3.13（`.python-version` に書いてあり、`uv sync` がこの版で環境を作ります）
 - [uv](https://docs.astral.sh/uv/) がインストール済みであること
 
 ### インストール
