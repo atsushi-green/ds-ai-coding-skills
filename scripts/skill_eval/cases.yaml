@@ -98,11 +98,14 @@ arms:
       - ".claude/skills/*-diagnostics"
       - ".claude/skills/statistical-ml-review" # 手法 → references の対応表を持つ
       - "docs/agent/diagnostics-reference-template.md"
+      # README は診断 skill の説明書きでもある（どの図が出るか、判定の語彙、使い方の例）。
+      # 行単位で落としても段落の残りから内容が読めるので、ファイルごと置かない
+      - "README.md"
     drop_sections:
       ".claude/skills/analysis-reporting/SKILL.md": ["## Diagnostics Summary（診断サマリー）"]
       ".claude/skills/analysis-reporting/references/report-template.md": ["### 診断サマリー"]
     drop_lines:
-      - files: ["CLAUDE.md", "README.md", ".claude/skills/**/*.md"]
+      - files: ["CLAUDE.md", ".gitignore", "docs/agent/*.md", ".claude/skills/**/*.md"]
         patterns: ["diagnostics", "診断", "必ず出す", "statistical-ml-review"]
   bare:
     description: skill も CLAUDE.md も置かない（モデルの素の挙動）

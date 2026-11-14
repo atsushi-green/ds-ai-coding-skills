@@ -29,6 +29,8 @@ SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 CASES_YAML = REPO_ROOT / "scripts" / "skill_eval" / "cases.yaml"
 # *-diagnostics の機能を指す記述。間引いた後に残っていたら、外したつもりの知識が漏れている
 TRACE_RE = re.compile(r"-diagnostics|診断サマリー|診断項目|必ず出す")
+# skill 名を含まなくても、診断 skill の中身（何を出すか、判定の語彙）が読めてしまう記述
+LEAK_RE = re.compile(r"diagnos|診断|判定表|判定バッジ|要対処", re.IGNORECASE)
 
 DOC = """\
 # Title
@@ -150,19 +152,35 @@ def test_apply_arm_stops_when_the_spec_no_longer_matches(tmp_path: Path) -> None
 
 
 def _copy_repo_parts(dest: Path) -> None:
-    """発火テストが sandbox に置くもののうち、skill と文書だけを dest にコピーする。"""
+    """発火テストが sandbox に置くもの（cases.yaml の copy）を dest にコピーする。"""
     config, _ = load_suite(CASES_YAML, SKILLS_DIR)
     ignore = shutil.ignore_patterns(".DS_Store", "__pycache__")
     for rel in config.copy:
         src = REPO_ROOT / rel
-        if rel in (".claude", "docs/agent") and src.is_dir():
-            shutil.copytree(src, dest / rel, ignore=ignore)
-        elif rel in ("CLAUDE.md", "README.md"):
-            shutil.copy2(src, dest / rel)
+        target = dest / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if src.is_dir():
+            shutil.copytree(src, target, ignore=ignore)
+        elif src.is_file():
+            shutil.copy2(src, target)
 
 
 def _markdown_under(root: Path) -> list[Path]:
     return sorted(p for p in root.rglob("*.md") if p.is_file())
+
+
+def _text_lines_under(root: Path) -> list[tuple[Path, str]]:
+    """root 以下のテキストファイルの (パス, 行)。uv.lock は依存の一覧なので見ない。"""
+    lines: list[tuple[Path, str]] = []
+    for p in sorted(root.rglob("*")):
+        if not p.is_file() or p.name == "uv.lock":
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        lines += [(p, line) for line in text.splitlines()]
+    return lines
 
 
 def test_no_diagnostics_arm_leaves_no_trace_and_keeps_base_skills(tmp_path: Path) -> None:
@@ -173,13 +191,15 @@ def test_no_diagnostics_arm_leaves_no_trace_and_keeps_base_skills(tmp_path: Path
     apply_arm(tmp_path, load_arms(CASES_YAML)["no-diagnostics"])
 
     assert list((tmp_path / ".claude/skills").glob("*-diagnostics")) == []
+    # README は診断 skill の説明書きなので置かない（段落の残りから中身が読めてしまう）
+    assert not (tmp_path / "README.md").exists()
+    # Markdown だけでなく .gitignore（outputs/diagnostics/）なども見る
     leaks = [
         f"{p.relative_to(tmp_path)}: {line.strip()[:60]}"
-        for p in _markdown_under(tmp_path)
-        for line in p.read_text(encoding="utf-8").splitlines()
-        if TRACE_RE.search(line)
+        for p, line in _text_lines_under(tmp_path)
+        if TRACE_RE.search(line) or LEAK_RE.search(line)
     ]
-    assert leaks == [], "間引いた後も *-diagnostics を指す記述が残っている"
+    assert leaks == [], "間引いた後も診断 skill の内容が読める記述が残っている"
 
     # 基本 skill とルーター文書の骨格は残る（外すのは診断の機能だけ）
     claude_md = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
