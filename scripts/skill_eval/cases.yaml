@@ -86,6 +86,7 @@ config:
 # skill 要否テストで比べる条件（arm）。`run --arm <名前>` で選ぶ。sandbox にリポジトリをコピーした直後、
 # ここに書いた操作で skill を間引いてから実行する（リポジトリの skill には触れない）。
 #   remove         sandbox から消すパス（glob）
+#   replace        ファイル → 置き換える中身（消すと困るファイルを、中身だけ無くす）
 #   drop_sections  ファイル → 消す節の見出し（その節だけを消す）
 #   drop_lines     files の各ファイルから、patterns（正規表現）に当たる行を消す
 # full 以外の arm では期待する skill 自体が無いので、発火の合否は付けない。
@@ -98,9 +99,11 @@ arms:
       - ".claude/skills/*-diagnostics"
       - ".claude/skills/statistical-ml-review" # 手法 → references の対応表を持つ
       - "docs/agent/diagnostics-reference-template.md"
-      # README は診断 skill の説明書きでもある（どの図が出るか、判定の語彙、使い方の例）。
-      # 行単位で落としても段落の残りから内容が読めるので、ファイルごと置かない
-      - "README.md"
+    # README は診断 skill の説明書きでもある（どの図が出るか、判定の語彙、使い方の例）。
+    # 行単位で落としても段落の残りから内容が読めるので、中身を無くす。
+    # ファイルは pyproject.toml の readme が指しているので残す（無いと uv sync が失敗する）
+    replace:
+      "README.md": "# analysis-project\n"
     drop_sections:
       ".claude/skills/analysis-reporting/SKILL.md": ["## Diagnostics Summary（診断サマリー）"]
       ".claude/skills/analysis-reporting/references/report-template.md": ["### 診断サマリー"]
@@ -109,7 +112,9 @@ arms:
         patterns: ["diagnostics", "診断", "必ず出す", "statistical-ml-review"]
   bare:
     description: skill も CLAUDE.md も置かない（モデルの素の挙動）
-    remove: [".claude", "CLAUDE.md", "README.md", "docs/agent"]
+    remove: [".claude", "CLAUDE.md", "docs/agent"]
+    replace:
+      "README.md": "# analysis-project\n"
 
 # references の中で、手法・条件によって「必ず出す図」が分かれる分岐。キーは references のファイル名（拡張子なし）。
 # 各ケースの covers でどの分岐を試すかを書き、すべての分岐が少なくとも 1 ケースで試されていることをテストで確かめる。

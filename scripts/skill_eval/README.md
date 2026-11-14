@@ -129,8 +129,8 @@ skill を外した側でも出ている図・値は、そのモデルに対し�
 | arm | 内容 |
 |---|---|
 | `full`（既定） | 間引かない |
-| `no-diagnostics` | `*-diagnostics` のルーターと references、それを指す記述（CLAUDE.md の Hard Rule とルーティング表の行、analysis-reporting の診断サマリー節など）を外す。診断 skill の説明書きでもある README.md も置かない。基本 skill は残す |
-| `bare` | `.claude/` と `CLAUDE.md` を置かない（モデルの素の挙動） |
+| `no-diagnostics` | `*-diagnostics` のルーターと references、それを指す記述（CLAUDE.md の Hard Rule とルーティング表の行、analysis-reporting の診断サマリー節など）を外す。診断 skill の説明書きでもある README.md は中身を無くす。基本 skill は残す |
+| `bare` | `.claude/`・`CLAUDE.md`・`docs/agent/` を置かず、README.md は中身を無くす（モデルの素の挙動） |
 
 - 間引くのは sandbox の中のコピーだけです。間引いた状態を最初のコミットにするので、エージェントからは
   「最初からその skill が無いリポジトリ」に見えます

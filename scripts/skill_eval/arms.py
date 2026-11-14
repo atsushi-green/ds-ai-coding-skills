@@ -1,7 +1,8 @@
 """skill 要否テストで比べる条件（arm）の定義と、sandbox への適用。
 
 arm は「sandbox にコピーした skill をどう間引くか」の指定。`full` は何もしない（発火テストと同じ）。
-それ以外の arm は、指定したパスを消し、指定した節・行を落として、skill の一部が無い状態を作る。
+それ以外の arm は、指定したパスを消し、指定したファイルの中身を置き換え、指定した節・行を落として、
+skill の一部が無い状態を作る。
 同じプロンプトを arm ごとに実行して成果物を比べれば、その skill が無くても出るものが分かる。
 
 間引くのは sandbox の中のコピーだけで、リポジトリの skill には触れない。
@@ -41,6 +42,8 @@ class Arm:
         name: arm の名前（出力ディレクトリ名にも使う）。
         description: レポートに載せる説明。
         remove: sandbox から消すパス（sandbox からの相対 glob）。
+        replace: ファイル（相対パス）→ 置き換える中身。消すと困るファイルに使う
+            （README.md は pyproject.toml の `readme` が指していて、無いと `uv sync` が失敗する）。
         drop_sections: ファイル（相対パス）→ 消す節の見出し行。見出しから、同じ深さ以上の
             次の見出しの手前までを消す。
         drop_lines: 行を落とす指定。
@@ -49,17 +52,19 @@ class Arm:
     name: str
     description: str = ""
     remove: tuple[str, ...] = ()
+    replace: dict[str, str] = field(default_factory=dict)
     drop_sections: dict[str, tuple[str, ...]] = field(default_factory=dict)
     drop_lines: tuple[LineRule, ...] = ()
 
     @property
     def is_full(self) -> bool:
         """skill を間引かない arm か（発火の合否を付けるのはこの arm だけ）。"""
-        return not (self.remove or self.drop_sections or self.drop_lines)
+        return not (self.remove or self.replace or self.drop_sections or self.drop_lines)
 
     def describe(self) -> list[str]:
         """この arm が行う操作を、実行計画やレポートに載せる文字列の一覧にする。"""
         lines = [f"remove {p}" for p in self.remove]
+        lines += [f"replace {p}" for p in self.replace]
         lines += [
             f"drop section {path} :: {h}"
             for path, heads in self.drop_sections.items()
@@ -81,13 +86,14 @@ def parse_arms(raw: dict[str, Any] | None) -> dict[str, Arm]:
     arms: dict[str, Arm] = {}
     for name, spec in (raw or {}).items():
         spec = spec or {}
-        unknown = set(spec) - {"description", "remove", "drop_sections", "drop_lines"}
+        unknown = set(spec) - {"description", "remove", "replace", "drop_sections", "drop_lines"}
         if unknown:
             raise ValueError(f"arm {name}: 未知のキー {sorted(unknown)}")
         arms[str(name)] = Arm(
             name=str(name),
             description=str(spec.get("description", "")).strip(),
             remove=tuple(str(p) for p in spec.get("remove", [])),
+            replace={str(path): str(text) for path, text in (spec.get("replace") or {}).items()},
             drop_sections={
                 str(path): tuple(str(h) for h in heads)
                 for path, heads in (spec.get("drop_sections") or {}).items()
@@ -173,8 +179,9 @@ def apply_arm(root: Path, arm: Arm) -> list[str]:
         行った操作の記録（レポートと result.json に残す）。
 
     Raises:
-        ValueError: 消す対象のパスや見出しが見つからない場合。cases.yaml の指定が skill の現状と
-            ずれたまま実行すると、間引いたつもりの記述が残った状態で比べてしまうので止める。
+        ValueError: 消す・置き換える対象のパスや見出しが見つからない場合。cases.yaml の指定が
+            skill の現状とずれたまま実行すると、間引いたつもりの記述が残った状態で
+            比べてしまうので止める。
     """
     log: list[str] = []
     for pattern in arm.remove:
@@ -188,6 +195,13 @@ def apply_arm(root: Path, arm: Arm) -> list[str]:
             else:
                 path.unlink()
             log.append(f"remove {rel}")
+
+    for rel, text in arm.replace.items():
+        path = root / rel
+        if not path.is_file():
+            raise ValueError(f"arm {arm.name}: replace の `{rel}` が無い")
+        path.write_text(text, encoding="utf-8")
+        log.append(f"replace {rel}")
 
     for rel, headings in arm.drop_sections.items():
         path = root / rel

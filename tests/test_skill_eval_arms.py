@@ -5,6 +5,7 @@
 - cases.yaml の指定が skill の現状とずれていたら、黙って進まずに止まる
 - `no-diagnostics` を実際のリポジトリに当てると、*-diagnostics を指す記述が残らず、基本 skill は残る
 - 間引きは sandbox の最初のコミットに含まれる（エージェントには未コミットの差分として見えない）
+- どの arm を当てても、pyproject.toml が指すファイルは残る（消すと sandbox の `uv sync` が失敗する）
 - skill を間引いた実行には、発火の合否を付けない
 """
 
@@ -14,6 +15,7 @@ import json
 import re
 import shutil
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -67,6 +69,9 @@ def test_parse_arms_always_has_full_and_rejects_bad_specs() -> None:
     assert set(arms) == {"x", FULL_ARM}
     assert arms[FULL_ARM].is_full and not arms["x"].is_full
     assert arms["x"].describe() == ["remove a"]
+    # 中身の置き換えも「間引き」の一種なので、full 以外として扱う
+    stub = parse_arms({"y": {"replace": {"README.md": "# t\n"}}})["y"]
+    assert not stub.is_full and stub.describe() == ["replace README.md"]
     # full は「間引かない」条件なので、操作を書けない
     with pytest.raises(ValueError, match="full"):
         parse_arms({FULL_ARM: {"remove": ["a"]}})
@@ -122,9 +127,11 @@ def test_apply_arm_removes_paths_sections_and_lines(tmp_path: Path) -> None:
     _write(tmp_path / "skills/a-diagnostics/references/m.md", "x")
     _write(tmp_path / "skills/base/SKILL.md", DOC)
     _write(tmp_path / "ROUTER.md", "rule 1\nalways apply the a-diagnostics skill\nrule 2\n")
+    _write(tmp_path / "README.md", "the a-diagnostics skill draws four panels\n")
     arm = Arm(
         name="t",
         remove=("skills/*-diagnostics",),
+        replace={"README.md": "# stub\n"},
         drop_sections={"skills/base/SKILL.md": ("## Drop Me",)},
         drop_lines=(LineRule(files=("ROUTER.md", "skills/**/*.md"), patterns=("-diagnostics",)),),
     )
@@ -133,8 +140,10 @@ def test_apply_arm_removes_paths_sections_and_lines(tmp_path: Path) -> None:
     assert not (tmp_path / "skills/a-diagnostics").exists()
     assert "Drop Me" not in (tmp_path / "skills/base/SKILL.md").read_text(encoding="utf-8")
     assert (tmp_path / "ROUTER.md").read_text(encoding="utf-8") == "rule 1\nrule 2\n"
+    assert (tmp_path / "README.md").read_text(encoding="utf-8") == "# stub\n"
     assert log == [
         "remove skills/a-diagnostics",
+        "replace README.md",
         "drop section skills/base/SKILL.md :: ## Drop Me",
         "drop 1 line(s) ROUTER.md",
     ]
@@ -145,6 +154,8 @@ def test_apply_arm_stops_when_the_spec_no_longer_matches(tmp_path: Path) -> None
     # skill の構成が変わって指定が当たらなくなったら、間引けていない状態で比べないよう止める
     with pytest.raises(ValueError, match="当たるパスが無い"):
         apply_arm(tmp_path, Arm(name="t", remove=("missing/*",)))
+    with pytest.raises(ValueError, match="replace"):
+        apply_arm(tmp_path, Arm(name="t", replace={"missing.md": ""}))
     with pytest.raises(ValueError, match="見出し"):
         apply_arm(tmp_path, Arm(name="t", drop_sections={"a.md": ("## Gone",)}))
     with pytest.raises(ValueError, match="が無い"):
@@ -191,8 +202,8 @@ def test_no_diagnostics_arm_leaves_no_trace_and_keeps_base_skills(tmp_path: Path
     apply_arm(tmp_path, load_arms(CASES_YAML)["no-diagnostics"])
 
     assert list((tmp_path / ".claude/skills").glob("*-diagnostics")) == []
-    # README は診断 skill の説明書きなので置かない（段落の残りから中身が読めてしまう）
-    assert not (tmp_path / "README.md").exists()
+    # README は診断 skill の説明書きなので中身を無くす（行単位で落としても段落の残りから読める）
+    assert (tmp_path / "README.md").read_text(encoding="utf-8").strip() == "# analysis-project"
     # Markdown だけでなく .gitignore（outputs/diagnostics/）なども見る
     leaks = [
         f"{p.relative_to(tmp_path)}: {line.strip()[:60]}"
@@ -219,7 +230,9 @@ def test_bare_and_full_arms_on_the_real_repo(tmp_path: Path) -> None:
     bare.mkdir()
     _copy_repo_parts(bare)
     apply_arm(bare, arms["bare"])
-    assert _markdown_under(bare) == []
+    # 残る Markdown は、中身を無くした README だけ
+    assert _markdown_under(bare) == [bare / "README.md"]
+    assert (bare / "README.md").read_text(encoding="utf-8").strip() == "# analysis-project"
 
     full = tmp_path / "full"
     full.mkdir()
@@ -227,6 +240,21 @@ def test_bare_and_full_arms_on_the_real_repo(tmp_path: Path) -> None:
     before = {p: p.read_bytes() for p in _markdown_under(full)}
     assert apply_arm(full, arms[FULL_ARM]) == []
     assert {p: p.read_bytes() for p in _markdown_under(full)} == before
+
+
+@pytest.mark.parametrize("arm_name", sorted(load_arms(CASES_YAML)))
+def test_every_arm_keeps_the_files_pyproject_points_at(tmp_path: Path, arm_name: str) -> None:
+    # sandbox は作った直後に `uv sync` する。pyproject.toml の readme が指すファイルを arm が
+    # 消すと、プロジェクトのビルドが失敗して 1 件も実行できない（README.md を消して実際に起きた）
+    _copy_repo_parts(tmp_path)
+    apply_arm(tmp_path, load_arms(CASES_YAML)[arm_name])
+    project = tomllib.loads((tmp_path / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    readme = project.get("readme")
+    if readme:
+        path = readme if isinstance(readme, str) else readme.get("file", "")
+        assert (tmp_path / path).is_file(), f"arm {arm_name} が {path} を消している"
+    # src レイアウトのパッケージも、消すとビルドできない
+    assert (tmp_path / "src" / "analysis_project" / "__init__.py").is_file()
 
 
 def test_build_sandbox_commits_the_ablated_tree(tmp_path: Path) -> None:
