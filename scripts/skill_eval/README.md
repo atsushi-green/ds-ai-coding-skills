@@ -103,6 +103,11 @@ uv run python scripts/run_skill_eval.py report outputs/skill_eval/<run_id>
 まず `--only` や `--kind` で数件に絞って試してください。`cases.yaml` の `max_budget_usd`（既定 5 ドル）と
 `timeout_min`（既定 40 分）で 1 ケースごとに上限を掛けています。
 
+モデルと effort は `--model`・`--effort`（または `cases.yaml` の `config`）で指定します。指定しなければ、
+手元の Claude Code の設定（`~/.claude/settings.json` の `model`・`effortLevel` など）で動きます。
+Claude Code の中（Bash ツールや VS Code 拡張）からハーネスを実行しても、親セッションの effort などは
+引き継ぎません（親が渡してくる `CLAUDE_EFFORT` などの環境変数を、起動する `claude` には渡さない）。
+
 ## skill 要否テスト（skill を外して同じプロンプトを実行する）
 
 発火テストで分かるのは「skill が読まれるか」までです。その skill が無くても同じ図と値が出るのなら、
@@ -130,8 +135,8 @@ skill を外した側でも出ている図・値は、そのモデルに対し�
 - 間引くのは sandbox の中のコピーだけです。間引いた状態を最初のコミットにするので、エージェントからは
   「最初からその skill が無いリポジトリ」に見えます
 - `full` 以外の arm では期待する skill 自体が無いので、発火の合否は付けません（一覧の発火欄は ➖）
-- 比べるときは `--model` でモデルを固定してください。1 回ずつの比較は実行ごとのばらつきと区別できないので、
-  結論を出すなら `--repeat` で複数回実行します
+- 比べるときは `--model` と `--effort` でモデルと effort を固定してください。1 回ずつの比較は実行ごとの
+  ばらつきと区別できないので、結論を出すなら `--repeat` で複数回実行します
 - 図と値が出ているかは人が見て判断します（自動判定は未実装）
 - `arms` の指定が skill の現状に当たらなくなると（見出しの改名など）、実行前にエラーで止まります。
   `no-diagnostics` を当てた後に `*-diagnostics` を指す記述が残らないことは、テストで確かめています

@@ -41,9 +41,33 @@ COLLECT_SUFFIXES = {
 }  # fmt: skip
 COLLECT_MAX_BYTES = 5 * 1024 * 1024
 DATA_DIRS = ("data/raw", "data/external", "data/interim", "data/processed", "outputs")
-# 入れ子の claude 起動を妨げる可能性のある環境変数（Claude Code の中から実行した場合）と、
-# リポジトリ側の .venv を指したままの VIRTUAL_ENV（sandbox の uv が毎回警告を出す）
-STRIP_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "VIRTUAL_ENV")
+# Claude Code の中（ターミナルの Bash ツール・VS Code 拡張・Agent SDK）からハーネスを実行したとき、
+# 親セッションが子プロセスに渡す環境変数。引き継ぐと、起動する claude が親の設定で動いてしまう
+# （CLAUDE_EFFORT は effort を親と同じ値にし、CLAUDE_CODE_ENABLE_TASKS は使えるツールを変える）。
+# 認証や接続先など利用者が自分で設定する変数（ANTHROPIC_*・CLAUDE_CONFIG_DIR・
+# CLAUDE_CODE_USE_BEDROCK など）は消さないよう、前方一致ではなく名前を列挙する。
+PARENT_SESSION_ENV = (
+    "CLAUDECODE",
+    "CLAUDE_EFFORT",
+    "CLAUDE_PID",
+    "CLAUDE_AGENT_SDK_VERSION",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_SSE_PORT",
+    "CLAUDE_CODE_EXECPATH",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_CODE_CHILD_SESSION",
+    "CLAUDE_CODE_SESSION_ATTENDED",
+    "CLAUDE_CODE_MESSAGING_SOCKET",
+    "CLAUDE_CODE_MESSAGING_TOKEN",
+    "CLAUDE_CODE_ENABLE_TASKS",
+    "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING",
+    "CLAUDE_CODE_QUESTION_PREVIEW_FORMAT",
+    "CLAUDE_CODE_STARTUP_FAILURE_RESULTS",
+    "CLAUDE_CODE_EMIT_STARTUP_TIMING",
+    "MCP_CONNECTION_NONBLOCKING",
+)
+# リポジトリ側の .venv を指したままの VIRTUAL_ENV も外す（sandbox の uv が毎回警告を出す）
+STRIP_ENV = (*PARENT_SESSION_ENV, "VIRTUAL_ENV")
 
 Snapshot = dict[str, tuple[int, int]]
 
