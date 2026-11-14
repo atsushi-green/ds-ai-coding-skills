@@ -27,6 +27,8 @@ glm: # 二値の目的変数
     - {id: val-brier, kind: 値, label: Brier score, report: ['Brier']}
     - {id: val-binned-out, kind: 値, label: binned residual のバンド外ビン数, report: ['帯外', 'バンド外', 'binned_out']}
 
+# val-pipeline と val-score-vs-baseline は、skill なしでも毎回出たので reference から行を削った。
+# 削ったあとも出ているかを見るために、採点表には残している
 ml-evaluation: # 分類
   items:
     - {id: fig-learning-curve, kind: 図, label: 過学習を見る曲線（学習曲線）, code: ['learning_curve\(', 'LearningCurveDisplay']}

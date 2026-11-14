@@ -30,42 +30,13 @@
 
 | 項目 | 合格基準 | 違反時の対処 |
 |---|---|---|
-| 前処理が Pipeline 内か | スケーラ・エンコーダ・代入・（使うなら）再標本化がすべて Pipeline 内 | リーク。Pipeline に入れて CV をやり直す |
 | 分割方法とその理由 | グループ有 → GroupKFold、時間有 → TimeSeriesSplit、不均衡 → Stratified。CV を使わないなら理由（学習コスト）と hold-out の件数 | 分割し直し |
-| 汎化スコアと幅（CV: 平均 ± SD / 単一分割: ブートストラップ CI） | ベースライン（Dummy）に明確に勝つ | 問題設定・特徴量の見直し |
 | train / validation スコアのギャップ | 主張したい差より小さい | 正則化・データ増。曲線を省いたときは必ずこの値を出す |
 | test 評価の回数 | 1 回のみ | 複数回見たならそれは検証セット。test を取り直す |
 | チューニング時の分割 | nested CV または train / val / test の 3 分割 | 分割し直し（CV で選んだ設定を同じ CV で評価しない） |
 | 不均衡時: 陽性率 | 主指標より先に報告 | accuracy を主指標にしない（PR-AUC / F1 / 再現率@精度） |
 | 平均予測確率 ÷ 実際の陽性率 | 1.0 付近（再標本化・`class_weight` を使うと陽性側にずれる） | 確率を判断に使うなら事前確率で補正するか、再標本化をやめる |
 | 回帰: 目的変数の SD と分位点 | 誤差指標（RMSE / MAE）と並べて報告 | スケール抜きの「RMSE 5.2」は解釈できない。対数変換したなら元スケールに戻して評価する |
-
-取得例:
-
-```python
-import numpy as np
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.dummy import DummyClassifier
-from sklearn.model_selection import StratifiedKFold, cross_val_score, learning_curve
-
-cv = StratifiedKFold(5, shuffle=True, random_state=0)
-pipe = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000))  # 前処理は Pipeline 内
-base = cross_val_score(DummyClassifier(strategy="prior"), X, y, cv=cv, scoring="roc_auc")
-scores = cross_val_score(pipe, X, y, cv=cv, scoring="roc_auc")  # 平均 ± SD をベースラインと並べる
-sizes, tr, va = learning_curve(pipe, X, y, cv=cv, scoring="roc_auc", train_sizes=np.linspace(0.1, 1, 5))
-```
-
-CV を回さない場合（NN など 1 回の学習が高コスト）は、test 予測の再標本化で幅を出す:
-
-```python
-from sklearn.metrics import roc_auc_score
-
-rng = np.random.default_rng(0)
-idx = [i for i in rng.integers(0, len(y_te), (1000, len(y_te))) if len(np.unique(y_te[i])) == 2]
-ci = np.percentile([roc_auc_score(y_te[i], proba_te[i]) for i in idx], [2.5, 97.5])  # 再学習なし
-```
 
 ## 落とし穴
 

@@ -51,46 +51,12 @@ Pearson χ² / df はカウントの過分散の目安で、個票のカウン�
 
 binned residual のバンドは ±2SE なので、モデルが正しければ各ビンはおよそ 5% の確率で外に出る。そこで外れ数を Binomial(K, 0.05) とみなし、割合ではなく件数で判定する（20 ビンで「5% = 1 つまで」とすると、正しいモデルでも 26% の確率で基準を外れる）。ただし各ビンの外れが独立・同確率という前提は近似で、±2SE も予測確率の推定誤差を含まない近似的なバンドである（予測確率は推定値で、out-of-fold でも fold 間で学習データが重なる）。件数の上限は便宜的な目安として使い、外れ方の形と合わせて読む。
 
-取得例（`df` は polars。二値の目的変数 `y`、説明変数の列名リスト `cols`）。二値:
+取得例（カウント。`cnt` は件数の Series、`Xc` は定数項を足した説明変数、曝露量 `expo` は全て正で `cnt` と同じ行順）:
 
 ```python
 import numpy as np
-import polars as pl
 import statsmodels.api as sm
-from sklearn.calibration import calibration_curve
-from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
-from sklearn.model_selection import StratifiedKFold
-from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-pdf = df.to_pandas()  # statsmodels には変数名付きの pandas で渡す
-y, Xc = pdf["y"], sm.add_constant(pdf[cols])
-res = sm.GLM(y, Xc, family=sm.families.Binomial()).fit()  # 係数・OR は全データで
-ci = np.exp(res.conf_int())
-odds = pl.DataFrame({"変数": list(res.params.index), "OR": np.exp(res.params.to_numpy()),
-                     "lo95": ci[0].to_numpy(), "hi95": ci[1].to_numpy()})  # OR は必ず 95% CI とセット
-vif = [variance_inflation_factor(Xc.to_numpy(), i) for i in range(1, Xc.shape[1])]  # 定数項込みで計算し const は除く
-p = np.empty(len(y))  # 性能指標は out-of-fold の予測確率で
-for tr, te in StratifiedKFold(5, shuffle=True, random_state=0).split(Xc, y):
-    p[te] = sm.GLM(y.iloc[tr], Xc.iloc[tr], family=sm.families.Binomial()).fit().predict(Xc.iloc[te])
-rate = y.mean()
-frac_pos, mean_pred = calibration_curve(y, p, n_bins=10, strategy="quantile")  # 等幅ビンが既定なので quantile を明示
-# binned residual plot 用: 予測確率の分位ビンごとの平均残差と ±2SE（SE は p(1-p) 由来）
-binned = (pl.DataFrame({"p": p, "r": y.to_numpy() - p})
-          .with_columns(bin=(pl.col("p").rank("ordinal") - 1) * 20 // pl.len())
-          .group_by("bin").agg(p=pl.col("p").mean(), resid=pl.col("r").mean(),
-                               se2=2 * ((pl.col("p") * (1 - pl.col("p"))).mean() / pl.len()).sqrt())
-          .sort("bin"))  # resid を p に対して散布し、±se2 を折れ線で重ねる
-vals = {"n": len(y), "陽性件数": int(y.sum()), "陽性率": rate, "EPV": min(y.sum(), len(y) - y.sum()) / len(cols),
-        "SE_max": res.bse.max(), "AUC": roc_auc_score(y, p), "AP": average_precision_score(y, p),
-        "Brier": brier_score_loss(y, p), "Brier_baseline": rate * (1 - rate), "VIF_max": max(vif),
-        "binned_bins": binned.height,  # K。基準の件数は K で変わる
-        "binned_out": binned.filter(pl.col("resid").abs() > pl.col("se2")).height}  # バンド外のビン数
-print(pl.DataFrame({"項目": list(vals), "値": list(vals.values())}, strict=False))  # int・float・文字列が混ざっても落ちない
-```
-
-カウント（`cnt` は件数の Series、曝露量 `expo` は全て正で `cnt` と同じ行順）:
-
-```python
 pois = sm.GLM(cnt, Xc, family=sm.families.Poisson(), offset=np.log(expo)).fit()
 disp = pois.pearson_chi2 / pois.df_resid  # ≈ 1。> 1.5 で過分散の疑い
 obs0, exp0 = int((cnt == 0).sum()), float(np.exp(-pois.fittedvalues).sum())  # 観測ゼロ数 vs 期待ゼロ数

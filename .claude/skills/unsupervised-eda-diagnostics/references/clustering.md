@@ -49,40 +49,13 @@ k が走査の対象にならない DBSCAN では、帰無比較は「同じ eps
 | DBSCAN: ノイズ点の割合 | 報告に明記し、業務上許容できる水準か書く | 過半がノイズなら eps / `min_samples` を見直すか、密度ベースが不適と結論する |
 | k-means / GMM: `n_init` と `random_state` | `n_init ≥ 20`、seed を報告に明記 | 階層・DBSCAN は決定的なので不要。代わりに linkage 法、または eps と `min_samples` を明記する |
 
-取得例（`X` は数値列だけの polars DataFrame）:
+取得例（階層・GMM・DBSCAN。`Xs` は標準化した配列、`ks` は走査する k の範囲、`k_best` は採用した k。走査とその根拠、安定性の取り方が k-means と違う）:
 
 ```python
 import numpy as np
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score, adjusted_rand_score
-from sklearn.preprocessing import StandardScaler
-
-Xs = StandardScaler().fit_transform(X.to_numpy())  # 単位が混在する場合の既定。全列が同じ単位なら素のままも選択肢（sklearn には配列で渡す）
-ks = range(2, 11)
-fits = {k: KMeans(k, n_init=20, random_state=0).fit(Xs) for k in ks}
-inertia = [fits[k].inertia_ for k in ks]  # エルボー
-sil = [silhouette_score(Xs, fits[k].labels_) for k in ks]  # n が大きいなら sample_size= を指定
-k_best = list(ks)[int(np.argmax(sil))]  # 候補。k の確定は指標だけで決めず報告側で判断する
-# k が指定されているならここを指定値にし、以降（帰無・ARI・シルエットプロット）も同じ k で計算する
-labels = fits[k_best].labels_
-ari_seed = adjusted_rand_score(labels, KMeans(k_best, n_init=20, random_state=1).fit_predict(Xs))
-rng = np.random.default_rng(0)  # 安定性: 80% サブサンプルで学習し、全行に当てはめたラベルと比べる
-ari_sub = [adjusted_rand_score(labels, KMeans(k_best, n_init=20, random_state=0)
-                               .fit(Xs[rng.choice(len(Xs), int(0.8 * len(Xs)), replace=False)]).predict(Xs))
-           for _ in range(10)]
-null_sil = []  # 帰無ベースライン: 列ごとに別々に順列し、変数間の構造だけ壊す（ギャップ統計量と同じ発想）
-for s in range(20):
-    rng = np.random.default_rng(s)  # rng は列間で使い回す（列ごとに作ると全列が同じ順列になる）
-    Xp = np.column_stack([rng.permutation(c) for c in Xs.T])
-    null_sil.append(silhouette_score(Xp, KMeans(k_best, n_init=20, random_state=0).fit_predict(Xp)))
-# 合格判定は sil[k_best - 2] > np.percentile(null_sil, 95) を報告側で読む
-```
-
-手法を変える場合の差分（走査とその根拠、安定性の取り方が変わる。共通 4 パネルはそのまま）:
-
-```python
 from scipy.cluster.hierarchy import cophenet, fcluster, linkage
 from scipy.spatial.distance import pdist
+from sklearn.metrics import adjusted_rand_score, silhouette_score
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import NearestNeighbors
 
