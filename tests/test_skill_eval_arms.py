@@ -6,6 +6,8 @@
 - `no-diagnostics` を実際のリポジトリに当てると、*-diagnostics を指す記述が残らず、基本 skill は残る
 - 間引きは sandbox の最初のコミットに含まれる（エージェントには未コミットの差分として見えない）
 - どの arm を当てても、pyproject.toml が指すファイルは残る（消すと sandbox の `uv sync` が失敗する）
+- README の中身は、どの条件の sandbox にも入らない（診断 skill の説明と比較結果が書いてある）
+- `agents-md-rule` は、診断についての記述をルーター文書の 1 行だけにする
 - skill を間引いた実行には、発火の合否を付けない
 """
 
@@ -13,17 +15,25 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 import subprocess
 import tomllib
 from pathlib import Path
 
 import pytest
-from skill_eval.arms import FULL_ARM, Arm, LineRule, apply_arm, drop_lines, drop_section, parse_arms
+from skill_eval.arms import (
+    FULL_ARM,
+    Arm,
+    Insertion,
+    LineRule,
+    apply_arm,
+    drop_lines,
+    drop_section,
+    parse_arms,
+)
 from skill_eval.cases import Case, EvalConfig, Expectation, load_arms, load_suite
 from skill_eval.evaluate import evaluate
 from skill_eval.report import build_html, build_markdown
-from skill_eval.sandbox import build_sandbox
+from skill_eval.sandbox import build_sandbox, copy_repo_files
 from skill_eval.transcript import Transcript
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -69,14 +79,34 @@ def test_parse_arms_always_has_full_and_rejects_bad_specs() -> None:
     assert set(arms) == {"x", FULL_ARM}
     assert arms[FULL_ARM].is_full and not arms["x"].is_full
     assert arms["x"].describe() == ["remove a"]
-    # 中身の置き換えも「間引き」の一種なので、full 以外として扱う
-    stub = parse_arms({"y": {"replace": {"README.md": "# t\n"}}})["y"]
-    assert not stub.is_full and stub.describe() == ["replace README.md"]
     # full は「間引かない」条件なので、操作を書けない
     with pytest.raises(ValueError, match="full"):
         parse_arms({FULL_ARM: {"remove": ["a"]}})
     with pytest.raises(ValueError, match="未知のキー"):
         parse_arms({"x": {"delete": ["a"]}})
+
+
+def test_extends_inherits_the_base_operations_then_adds_its_own() -> None:
+    arms = parse_arms(
+        {
+            "base": {"remove": ["a"], "drop_sections": {"f.md": ["## A"]}},
+            "child": {
+                "extends": "base",
+                "remove": ["b"],
+                "drop_sections": {"f.md": ["## B"]},
+                "insert_after": {"R.md": [{"after": "rule 1", "line": "rule 2"}]},
+            },
+        }
+    )
+    child = arms["child"]
+    assert child.remove == ("a", "b")
+    assert child.drop_sections == {"f.md": ("## A", "## B")}
+    # 行を足すだけの arm も「skill をそのまま使う」条件ではない
+    assert not child.is_full
+    assert child.describe()[-1] == "insert into R.md :: rule 2"
+    assert arms["base"].remove == ("a",)  # 引き継ぎ元は変わらない
+    with pytest.raises(ValueError, match="先に定義されていない"):
+        parse_arms({"child": {"extends": "later"}, "later": {}})
 
 
 def test_cases_yaml_defines_the_arms_used_in_the_readme() -> None:
@@ -127,53 +157,49 @@ def test_apply_arm_removes_paths_sections_and_lines(tmp_path: Path) -> None:
     _write(tmp_path / "skills/a-diagnostics/references/m.md", "x")
     _write(tmp_path / "skills/base/SKILL.md", DOC)
     _write(tmp_path / "ROUTER.md", "rule 1\nalways apply the a-diagnostics skill\nrule 2\n")
-    _write(tmp_path / "README.md", "the a-diagnostics skill draws four panels\n")
     arm = Arm(
         name="t",
         remove=("skills/*-diagnostics",),
-        replace={"README.md": "# stub\n"},
         drop_sections={"skills/base/SKILL.md": ("## Drop Me",)},
-        drop_lines=(LineRule(files=("ROUTER.md", "skills/**/*.md"), patterns=("-diagnostics",)),),
+        drop_lines=(LineRule(files=("ROUTER.md", "skills/**/*.md"), patterns=("diagnostics",)),),
+        insert_after=(Insertion("ROUTER.md", "rule 1", "always output diagnostics"),),
     )
     log = apply_arm(tmp_path, arm)
 
     assert not (tmp_path / "skills/a-diagnostics").exists()
     assert "Drop Me" not in (tmp_path / "skills/base/SKILL.md").read_text(encoding="utf-8")
-    assert (tmp_path / "ROUTER.md").read_text(encoding="utf-8") == "rule 1\nrule 2\n"
-    assert (tmp_path / "README.md").read_text(encoding="utf-8") == "# stub\n"
+    # 足す行は消すパターンに当たるが、行を消した後に足すので残る
+    assert (tmp_path / "ROUTER.md").read_text(encoding="utf-8") == (
+        "rule 1\nalways output diagnostics\nrule 2\n"
+    )
     assert log == [
         "remove skills/a-diagnostics",
-        "replace README.md",
         "drop section skills/base/SKILL.md :: ## Drop Me",
         "drop 1 line(s) ROUTER.md",
+        "insert into ROUTER.md :: always output diagnostics",
     ]
 
 
 def test_apply_arm_stops_when_the_spec_no_longer_matches(tmp_path: Path) -> None:
-    _write(tmp_path / "a.md", "## Other\n")
+    _write(tmp_path / "a.md", "## Other\nsame\nsame\n")
     # skill の構成が変わって指定が当たらなくなったら、間引けていない状態で比べないよう止める
     with pytest.raises(ValueError, match="当たるパスが無い"):
         apply_arm(tmp_path, Arm(name="t", remove=("missing/*",)))
-    with pytest.raises(ValueError, match="replace"):
-        apply_arm(tmp_path, Arm(name="t", replace={"missing.md": ""}))
     with pytest.raises(ValueError, match="見出し"):
         apply_arm(tmp_path, Arm(name="t", drop_sections={"a.md": ("## Gone",)}))
     with pytest.raises(ValueError, match="が無い"):
         apply_arm(tmp_path, Arm(name="t", drop_sections={"b.md": ("## Gone",)}))
+    # 行を足す目印は、無くても複数あっても止める（どこに足したか分からなくなる）
+    with pytest.raises(ValueError, match="0 件"):
+        apply_arm(tmp_path, Arm(name="t", insert_after=(Insertion("a.md", "gone", "x"),)))
+    with pytest.raises(ValueError, match="2 件"):
+        apply_arm(tmp_path, Arm(name="t", insert_after=(Insertion("a.md", "same", "x"),)))
 
 
 def _copy_repo_parts(dest: Path) -> None:
-    """発火テストが sandbox に置くもの（cases.yaml の copy）を dest にコピーする。"""
+    """発火テストが sandbox に置くもの（cases.yaml の copy と stub_files）を dest に作る。"""
     config, _ = load_suite(CASES_YAML, SKILLS_DIR)
-    ignore = shutil.ignore_patterns(".DS_Store", "__pycache__")
-    for rel in config.copy:
-        src = REPO_ROOT / rel
-        target = dest / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if src.is_dir():
-            shutil.copytree(src, target, ignore=ignore)
-        elif src.is_file():
-            shutil.copy2(src, target)
+    copy_repo_files(REPO_ROOT, dest, config)
 
 
 def _markdown_under(root: Path) -> list[Path]:
@@ -202,7 +228,7 @@ def test_no_diagnostics_arm_leaves_no_trace_and_keeps_base_skills(tmp_path: Path
     apply_arm(tmp_path, load_arms(CASES_YAML)["no-diagnostics"])
 
     assert list((tmp_path / ".claude/skills").glob("*-diagnostics")) == []
-    # README は診断 skill の説明書きなので中身を無くす（行単位で落としても段落の残りから読める）
+    # README の中身は、どの条件でも sandbox に入れない（cases.yaml の stub_files）
     assert (tmp_path / "README.md").read_text(encoding="utf-8").strip() == "# analysis-project"
     # Markdown だけでなく .gitignore（outputs/diagnostics/）なども見る
     leaks = [
@@ -222,6 +248,30 @@ def test_no_diagnostics_arm_leaves_no_trace_and_keeps_base_skills(tmp_path: Path
         encoding="utf-8"
     )
     assert "## Structure" in reporting and "## Required Context" in reporting
+
+
+def test_agents_md_rule_arm_leaves_only_the_one_line(tmp_path: Path) -> None:
+    _copy_repo_parts(tmp_path)
+    arm = load_arms(CASES_YAML)["agents-md-rule"]
+    apply_arm(tmp_path, arm)
+
+    assert list((tmp_path / ".claude/skills").glob("*-diagnostics")) == []
+    rule = arm.insert_after[0].line
+    # 診断に触れる記述は、足した 1 行だけ。Hard Rules の箇条書きの中にある
+    leaks = [line for _, line in _text_lines_under(tmp_path) if LEAK_RE.search(line)]
+    assert leaks == [rule]
+    claude_md = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+    hard_rules = claude_md.split("## Hard Rules (Always Apply)")[1].split("\n## ")[0]
+    assert rule in hard_rules
+    # skill には触れない文にしてある（skill が無いのに skill を指すと、探しに行って迷う）
+    assert "skill" not in rule
+
+
+def test_readme_content_never_reaches_a_sandbox(tmp_path: Path) -> None:
+    # README には診断 skill が何を出すかと、比較の結果が書いてある。full の条件でも中身は置かない
+    _copy_repo_parts(tmp_path)
+    assert (tmp_path / "README.md").read_text(encoding="utf-8") == "# analysis-project\n"
+    assert "README.md" in load_suite(CASES_YAML, SKILLS_DIR)[0].copy
 
 
 def test_bare_and_full_arms_on_the_real_repo(tmp_path: Path) -> None:

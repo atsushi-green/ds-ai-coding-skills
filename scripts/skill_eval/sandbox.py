@@ -79,6 +79,36 @@ def _copy_read_only(src: Path, target: Path) -> None:
     target.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
 
+def copy_repo_files(repo_root: Path, dest: Path, config: EvalConfig) -> None:
+    """config.copy のファイルを dest にコピーし、config.stub_files の中身を差し替える。
+
+    差し替えは、ファイルは要るが中身を見せたくないものに使う。README.md は pyproject.toml の
+    readme が指しているので消せない（消すと `uv sync` が失敗する）。一方で診断 skill の説明と
+    比較結果が書いてあり、エージェントが読むと skill の有無による差を測れなくなる。
+
+    Args:
+        repo_root: コピー元のリポジトリルート。
+        dest: コピー先（存在していること）。
+        config: コピー対象と、中身を差し替えるファイルの指定。
+    """
+    ignore = shutil.ignore_patterns(".DS_Store", "__pycache__")
+    for rel in config.copy:
+        src = repo_root / rel
+        if not src.exists():
+            continue
+        target = dest / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if src.is_dir():
+            # symlinks=False: .claude/skills がリンクでも実体をコピーする
+            shutil.copytree(src, target, ignore=ignore)
+        else:
+            shutil.copy2(src, target)
+    for rel, text in config.stub_files.items():
+        target = dest / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+
+
 def build_sandbox(
     repo_root: Path,
     dest: Path,
@@ -104,18 +134,7 @@ def build_sandbox(
         ValueError: arm が消す対象のパス・見出しが見つからない場合。
     """
     dest.mkdir(parents=True, exist_ok=False)
-    ignore = shutil.ignore_patterns(".DS_Store", "__pycache__")
-    for rel in config.copy:
-        src = repo_root / rel
-        if not src.exists():
-            continue
-        target = dest / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if src.is_dir():
-            # symlinks=False: .claude/skills がリンクでも実体をコピーする
-            shutil.copytree(src, target, ignore=ignore)
-        else:
-            shutil.copy2(src, target)
+    copy_repo_files(repo_root, dest, config)
     # エージェントから見て「最初からその skill が無いリポジトリ」になるよう、コミットの前に間引く
     arm_ops = apply_arm(dest, arm) if arm is not None else []
     for d in DATA_DIRS:

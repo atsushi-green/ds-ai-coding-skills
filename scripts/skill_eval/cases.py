@@ -76,6 +76,8 @@ class EvalConfig:
         extra_args: そのほか claude に渡す引数。
         copy: sandbox にコピーするリポジトリ内のパス。
         data_files: sandbox に読み取り専用でコピーするデータファイル。
+        stub_files: sandbox 内の相対パス → 差し替える中身。ファイルは要るが中身を
+            エージェントに見せたくないものに使う（どの条件でも同じように差し替える）。
     """
 
     claude_bin: str = "claude"
@@ -90,6 +92,7 @@ class EvalConfig:
     extra_args: list[str] = field(default_factory=list)
     copy: list[str] = field(default_factory=list)
     data_files: list[str] = field(default_factory=list)
+    stub_files: dict[str, str] = field(default_factory=dict)
 
 
 def _is_pattern(name: str) -> bool:
