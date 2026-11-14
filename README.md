@@ -4,6 +4,9 @@
 
 # ds-ai-coding-skills
 
+**回帰や検定を AI に頼むと、その診断の図と値まで一緒に返ってくる。**<br>
+データ分析のための Agent Skills 集（Claude Code / GitHub Copilot / Codex 対応）
+
 [![CI](https://img.shields.io/github/actions/workflow/status/atsushi-green/ds-ai-coding-skills/ci.yml?branch=main&style=flat-square&label=CI&color=2c7a6d)](https://github.com/atsushi-green/ds-ai-coding-skills/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.13-f26649?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![uv](https://img.shields.io/badge/managed%20by-uv-f26649?style=flat-square&logo=uv&logoColor=white)](https://docs.astral.sh/uv/)
@@ -20,15 +23,123 @@
 
 ---
 
+AI コーディングエージェントに「ロジスティック回帰して」と頼むと、係数とオッズ比は返ってきます。
+しかし、その推定を信用してよいかの確認（多重共線性、当てはまり、キャリブレーション）は、頼まない限り省かれがちです。
+
+このリポジトリの `*-diagnostics` skill は、分析手法ごとに「実行したら必ず一緒に出す図と値」を決めておき、頼まなくても出させます。
+
+## 同じ依頼を、skill なし・ありで比べる
+
+同じ依頼を、同じモデル（Claude Opus 5.5）に、診断 skill を外した状態と入れた状態で投げた結果です。
+
+> data/raw/train.csv（Titanic）で、生存 Survived を性別・客室等級・年齢・運賃で説明するロジスティック回帰をして、オッズ比で結果を教えて。
+
+| | skill なし | skill あり |
+|---|---|---|
+| オッズ比と 95% 信頼区間 | 出る | 出る（同じ値） |
+| 診断の図 | 0 枚 | ROC・PR・キャリブレーション・binned residual の 4 パネル |
+| 診断の値 | なし。報告には「モデルの当てはまりの良さや、変数どうしの相関の強さは確認していません」 | VIF・EPV・AUC・Brier score など。実測値・合格基準・判定を表で報告 |
+| 診断から分かったこと | — | 関数形が合っていない可能性と、年齢の欠測が無作為でない可能性。どちらも次の手つきで報告 |
+
+<img src="docs/images/ablation-glm.jpg" alt="ロジスティック回帰の生成図の比較。skill なしは図が無く、skill ありは ROC・PR・キャリブレーション・binned residual の 4 パネル" width="900">
+
+3 つの手法（ロジスティック回帰・予測モデルの評価・k-means）で比べると、skill が「必ず出す」と定めた 37 項目のうち、
+skill ありは 37 項目、skill なしは 13 項目を出しました（各 1 回の実行。照合は AI）。
+skill なしでも出た項目、費用が約 1.5 倍になること、比べ方の制約は [比較結果の全文](docs/skill-ablation.md) にあります。
+
+## 使ってみる
+
+入れ方は 3 通りあります。入れたあとは、いつもどおり分析を頼むだけです。診断に触れる必要はありません。
+
+### 診断 skill だけを、いまのリポジトリに入れる
+
+```bash
+npx skills add atsushi-green/ds-ai-coding-skills
+```
+
+表示される一覧から、名前が `-diagnostics` で終わる 5 つを選びます（[skills CLI](https://github.com/vercel-labs/skills) が、
+Claude Code や Codex など選んだエージェントの置き場所にコピーします）。選択の操作を省くなら、名前を指定します。
+
+```bash
+npx skills add atsushi-green/ds-ai-coding-skills \
+  --skill statistical-inference-diagnostics --skill predictive-modeling-diagnostics \
+  --skill causal-inference-diagnostics --skill unsupervised-eda-diagnostics \
+  --skill simulation-optimization-diagnostics
+```
+
+5 つの skill は他のファイルを参照しません。`.claude/skills/<名前>/` をディレクトリごと手でコピーしても動きます。
+
+### Claude Code の plugin として入れる
+
+```bash
+claude plugin install ds-diagnostics --marketplace atsushi-green/ds-ai-coding-skills
+```
+
+Claude Code 2.1.275 以降で使えます（セッションの中では `/plugin install ds-diagnostics --marketplace atsushi-green/ds-ai-coding-skills`）。
+plugin の skill はプロジェクトの外に置かれるので、手法別の references を読むときに読み取りの許可を求められたら、許可してください。
+無人実行（`claude -p`）で使う場合は、plugin の置き場所の読み取りをあらかじめ許可しておく必要があります。
+プロジェクトの中に skill を置く上の方法なら、この許可は要りません。
+
+### テンプレートとして丸ごと使う
+
+GitHub の **Use this template** から新しいリポジトリを作るか、clone して使います。
+診断 skill に加えて、次のものが入ります。
+
+- ルーター文書 `CLAUDE.md`（Claude Code）と `AGENTS.md`（Copilot / Codex）。ハードルールとスキルのルーティング表を持ち、タスクに応じて該当する skill を適用させます
+- 基本 skill（Python の書き方、polars、SQL、可視化、データの安全な扱い、分析結果の報告など）
+- タスク実行用の skill。Claude Code ではスラッシュコマンドとしても呼べます（例: `/plan-analysis`、`/review-sql`）
+- raw データや秘密情報のコミットを検知する CI
+
+セットアップは [テンプレートとして使うときのセットアップ](#テンプレートとして使うときのセットアップ) を参照してください。
+
+## 入っている診断 skill
+
+5 つのルーターが、19 の手法別 references に振り分けます。常に読み込まれるのはルーターの説明文だけで、
+手法別の本文（必ず出す図・必ず出す値・落とし穴）は、その手法を使うときにだけ読まれます。
+
+| skill（ルーター） | 手法（references） |
+|---|---|
+| `statistical-inference-diagnostics` | 線形回帰、GLM（ロジスティック・ポアソンなど）、混合効果・パネル、仮説検定、生存時間分析、ベイズ推定（MCMC） |
+| `predictive-modeling-diagnostics` | 予測モデルの評価（分割・交差検証・リーク）、決定木・ランダムフォレスト・GBDT、モデル解釈（SHAP など）、時系列 |
+| `causal-inference-diagnostics` | A/B テスト、傾向スコア・IPW・DML、差の差・操作変数・回帰不連続・合成コントロール |
+| `unsupervised-eda-diagnostics` | 欠測・外れ値、クラスタリング、次元削減、異常検知 |
+| `simulation-optimization-diagnostics` | モンテカルロ・離散事象シミュレーション、LP / MIP・メタヒューリスティクス |
+
+報告には、診断項目ごとに実測値・合格基準・判定（`OK` / `要対処` / `確認`）・次アクションを並べた表が付きます。
+各手法でどんな図が出るかは、次のギャラリーで確認できます。
+
+## 診断図ギャラリーの見方
+
+各 `*-diagnostics` skill が「実行したら必ず出す」と定めた図を、実データ（Titanic ほか）で
+出力して並べたものが [診断図ギャラリー](https://atsushi-green.github.io/ds-ai-coding-skills/) です。
+「このskillを使うと、どの手法でどんな図・判定が出てくるのか」を手を動かさずに確認できます。
+
+トップページには「①統計的推論」「②予測モデリング」「③因果推論」「④教師なし・EDA」
+「⑤シミュレーション・最適化」の5スキル・17手法・45図が並びます。左の目次から見たい手法に
+ジャンプできます。
+
+<img src="docs/images/gallery-top.jpg" alt="診断図ギャラリーのトップページ。5スキル・17手法・45図・142診断項目の集計が並ぶ" width="800">
+
+各手法のセクションには、題材（使ったモデル・データ）、判定バッジ（`OK` / `確認` / `要対処`。
+件数つき）、そして実際に出力された図がそのまま並びます。「絞り込み」で `要対処を含む手法` だけに
+表示を絞ることもできます。
+
+<img src="docs/images/gallery-figure.jpg" alt="線形回帰（OLS）セクション。判定バッジと残差4点セットの図" width="800">
+
+- 図の雛形は AI が diagnostics skill に従って生成したもので、人手レビューは行っていません。数値や
+  判定の正しさの保証ではなく、「このskillを使うとこういう図が出る」という雰囲気を掴むためのものです。
+- ソースは [docs/gallery/](docs/gallery/)。デプロイは `.github/workflows/pages.yml`。
+
 ## 関連リンク
 
 | | リンク | 内容 |
 |:-:|---|---|
 | 📊 | [**診断図ギャラリー**](https://atsushi-green.github.io/ds-ai-coding-skills/) | 各 `*-diagnostics` skill が「必ず出す」と定めた図を、実データで出力して並べたもの |
+| 🔬 | [**診断 skill は本当に要るのか**](docs/skill-ablation.md) | skill を外して同じ依頼を投げ、「必ず出す」図と値がどれだけ出るかを比べた結果 |
 | 📝 | [**データサイエンティストのためのAGENTS.mdとSkills**](https://zenn.dev/green_tea/articles/d310e5cf809190) | ルーター文書（`AGENTS.md`）と、Python・SQL・データ処理・可視化などの基本 skill の設計 |
 | 📝 | [**続・データサイエンティストのためのSkills:分析手法×診断可視化セット**](https://zenn.dev/green_tea/articles/55d2761106ee74) | `*-diagnostics` skill 群（図と値をセットで出させる仕組み）の設計と動作例 |
 
-## セットアップ
+## テンプレートとして使うときのセットアップ
 
 ### 前提条件
 
@@ -65,6 +176,8 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 │   ├── workflows/ci.yml               # GitHub Actions CI
 │   ├── instructions/                  # パス別補助指示（Copilot の applyTo 用）
 │   └── prompts/                       # 再利用プロンプト（Copilot）
+├── .claude-plugin/
+│   └── marketplace.json               # 診断 skill を Claude Code の plugin として配るための定義
 ├── .claude/
 │   └── skills/                        # 作業別スキルの唯一の置き場（3ツール共通。旧スラッシュコマンドを含む）
 │                                      #   *-diagnostics は2段構成: ルーター SKILL.md + references/<method>.md
@@ -89,38 +202,7 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 └── tests/                             # テスト
 ```
 
-## 診断図ギャラリーの見方
-
-各 `*-diagnostics` skill が「実行したら必ず出す」と定めた図を、実データ（Titanic ほか）で
-出力して並べたものが [診断図ギャラリー](https://atsushi-green.github.io/ds-ai-coding-skills/) です。
-「このskillを使うと、どの手法でどんな図・判定が出てくるのか」を手を動かさずに確認できます。
-
-トップページには「①統計的推論」「②予測モデリング」「③因果推論」「④教師なし・EDA」
-「⑤シミュレーション・最適化」の5スキル・17手法・45図が並びます。左の目次から見たい手法に
-ジャンプできます。
-
-<img src="docs/images/gallery-top.jpg" alt="診断図ギャラリーのトップページ。5スキル・17手法・45図・142診断項目の集計が並ぶ" width="800">
-
-各手法のセクションには、題材（使ったモデル・データ）、判定バッジ（`OK` / `確認` / `要対処`。
-件数つき）、そして実際に出力された図がそのまま並びます。「絞り込み」で `要対処を含む手法` だけに
-表示を絞ることもできます。
-
-<img src="docs/images/gallery-figure.jpg" alt="線形回帰（OLS）セクション。判定バッジと残差4点セットの図" width="800">
-
-- 図の雛形は AI が diagnostics skill に従って生成したもので、人手レビューは行っていません。数値や
-  判定の正しさの保証ではなく、「このskillを使うとこういう図が出る」という雰囲気を掴むためのものです。
-- ソースは [docs/gallery/](docs/gallery/)。デプロイは `.github/workflows/pages.yml`。
-
-## 使い方（Claude Code / Copilot / Codex 共通）
-
-1. このリポジトリをテンプレートとして使うか、`.claude/skills/` 配下の skill を自分のリポジトリに
-   コピーする（`*-diagnostics` は家族ディレクトリごとコピーすれば単体で動きます）。
-2. `CLAUDE.md`（Claude Code）または `AGENTS.md`（Copilot / Codex）がハードルールとスキルの
-   ルーティング表を読み込み、タスクに応じて該当 skill を自動的に適用します。
-   例: 「ロジスティック回帰して」と頼むと `statistical-inference-diagnostics` → `references/glm.md`
-   が参照され、回帰係数だけでなく ROC・混同行列などの「必ず出す図」も一緒に出力されます。
-3. Claude Code では `.claude/skills/*/SKILL.md` の一部はスラッシュコマンドとしても呼べます
-   （例: `/plan-analysis`、`/review-sql`）。
+## 設計の詳細
 
 指示体系の設計（なぜ `CLAUDE.md` と `AGENTS.md` の2ファイルなのか）、スキル一覧、
 `*-diagnostics` skill の2段構成、エージェント文書の同期方法、データの安全性ルール、

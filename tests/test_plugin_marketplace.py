@@ -4,6 +4,7 @@
 - plugin が配るのは、実在する `*-diagnostics` のルーターすべてで、それ以外を含まない
   （ルーターを足したのに plugin に入れ忘れる、消した skill を指したままにする、を防ぐ）
 - plugin の中身はリポジトリ直下を指し、skill のパスはそこからの相対パスになっている
+- README の導入コマンドが、定義の plugin 名と同じ名前を使っている
 """
 
 from __future__ import annotations
@@ -60,3 +61,14 @@ def test_shipped_skills_do_not_point_outside_their_own_directory() -> None:
         if outside.search(line)
     ]
     assert hits == []
+
+
+def test_readme_install_commands_match_the_manifest() -> None:
+    data = _load()
+    plugin = data["plugins"][0]
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert f"claude plugin install {plugin['name']} --marketplace " in readme
+    # skills CLI で名前を指定する例は、plugin と同じ 5 つを挙げている
+    block = readme[readme.index("npx skills add") :]
+    named = set(re.findall(r"--skill ([a-z-]+)", block))
+    assert named == {Path(s).name for s in plugin["skills"]}
