@@ -21,7 +21,7 @@ glm: # 二値の目的変数
     - {id: val-se, kind: 値, label: 係数の SE（完全分離の確認）, report: ['完全分離', 'SE.{0,6}(最大|max)', 'SE_max']}
     - {id: val-vif, kind: 値, label: VIF の最大値, report: ['VIF']}
     - {id: val-repeated, kind: 値, label: 反復測定・パネル構造, report: ['反復測定', 'パネル構造', 'cluster.?robust', 'クラスタ.?ロバスト']}
-    - {id: val-abs-coef, kind: 値, label: 係数の絶対値, report: ['\|係数\|', '係数の絶対値', 'abs_coef']}
+    - {id: val-abs-coef, kind: 値, label: 係数の絶対値, report: ['\\?\|係数\\?\|', '係数の絶対値', 'abs_coef']}
     - {id: val-epv, kind: 値, label: EPV, report: ['EPV']}
     - {id: val-auc-ap, kind: 値, label: AUC・AP, report_all: ['AUC', '\bAP\b|average.precision|平均適合率']}
     - {id: val-brier, kind: 値, label: Brier score, report: ['Brier']}
@@ -31,11 +31,11 @@ glm: # 二値の目的変数
 # 削ったあとも出ているかを見るために、採点表には残している
 ml-evaluation: # 分類
   items:
-    - {id: fig-learning-curve, kind: 図, label: 過学習を見る曲線（学習曲線）, code: ['learning_curve\(', 'LearningCurveDisplay']}
+    - {id: fig-learning-curve, kind: 図, label: 過学習を見る曲線（学習曲線）, code: ['learning_curve\(', 'LearningCurveDisplay', 'staged_predict', 'evals_result', 'validation_score_']}
     - {id: fig-baseline, kind: 図, label: ベースラインとの比較（幅つき）, code_all: ['Dummy(Classifier|Regressor)', 'boxplot\(|violinplot\(|errorbar\(']}
     - {id: fig-confusion, kind: 図, label: 混同行列, code: ['confusion_matrix\(', 'ConfusionMatrixDisplay']}
     - {id: fig-roc-pr, kind: 図, label: PR 曲線・ROC 曲線, code_all: ['roc_curve\(|RocCurveDisplay', 'precision_recall_curve\(|PrecisionRecallDisplay']}
-    - {id: val-pipeline, kind: 値, label: 前処理が Pipeline の中にあるか, code: ['Pipeline\(', 'make_pipeline\(']}
+    - {id: val-pipeline, kind: 値, label: 前処理が Pipeline の中にあるか, code: ['Pipeline\(', 'make_pipeline\('], report: ['前処理.{0,14}(リーク|Pipeline|パイプライン)', '学習する前処理(は)?(なし|無し|ない)']}
     - {id: val-split, kind: 値, label: 分割方法, code: ['stratify\s*=', 'Stratified\w*KFold', 'GroupKFold', 'TimeSeriesSplit']}
     - {id: val-score-vs-baseline, kind: 値, label: 汎化スコアと幅（ベースラインとの比較）, code_all: ['Dummy(Classifier|Regressor)', 'cross_val|KFold|bootstrap|resample']}
     - {id: val-train-val-gap, kind: 値, label: train と validation のスコアの差, report: ['(train|学習(用)?データ|訓練).{0,30}((?<!交)差|ギャップ|gap)', '((?<!交)差|ギャップ).{0,12}train', 'train_val_gap']}
