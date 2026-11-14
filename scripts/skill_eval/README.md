@@ -132,6 +132,23 @@ uv run python scripts/run_skill_eval.py compare outputs/skill_eval/<full の run
 skill を外した側でも出ている図・値は、そのモデルに対しては書かなくても出るもの（削る候補）、
 外した側にだけ無いものは skill が効いているものです。
 
+項目ごとに「出た／出ない」を数えるには `score` を使います（これも API は呼びません）。
+
+```bash
+uv run python scripts/run_skill_eval.py score outputs/skill_eval/<skill なしの run_id> outputs/skill_eval/<full の run_id>
+```
+
+[checklists.yaml](checklists.yaml) に、reference の「必ず出す図」「必ず出す値」を 1 項目ずつ、見つけ方（正規表現）つきで
+書いてあります。見つけ方は、生成されたスクリプトに当てるもの（`roc_curve(` など）と、最終応答や生成された表に当てるもの
+（`VIF` など）の 2 種類です。「確認していません」のような否定の文は数えず、図の項目は図のファイルが作られていることも
+条件にします。結果は「出た回数 / 実行回数」の表（`scores.md`）と、1 項目 1 行の `scores.csv` に出ます。
+
+- 採点表があるのは `glm`（二値）・`ml-evaluation`（分類）・`clustering`（k-means）の 3 本です。ほかの reference を
+  比べるときは、採点表に項目を足してください
+- 正規表現による採点なので、言い回しの違いで取りこぼしや誤検出がありえます。採点表を直したら、
+  いくつかの実行を `compare` のレポートで目で見て確かめてください
+- 実行が落ちたもの（ERROR）は採点に入れません
+
 間引き方（arm）は [cases.yaml](cases.yaml) の `arms` に書きます。
 
 | arm | 内容 |

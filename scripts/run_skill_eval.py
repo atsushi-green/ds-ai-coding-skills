@@ -14,6 +14,7 @@ sandbox で新しく作られた図を回収して `outputs/skill_eval/<run_id>/
     uv run python scripts/run_skill_eval.py run --only glm-explicit --arm no-diagnostics
     uv run python scripts/run_skill_eval.py report outputs/skill_eval/<run_id>
     uv run python scripts/run_skill_eval.py compare outputs/skill_eval/<a> outputs/skill_eval/<b>
+    uv run python scripts/run_skill_eval.py score outputs/skill_eval/<a> outputs/skill_eval/<b>
 """
 
 from __future__ import annotations
@@ -47,11 +48,13 @@ from skill_eval.sandbox import (
     snapshot,
     text_diff,
 )
+from skill_eval.score import write_scores
 from skill_eval.transcript import Transcript
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 DEFAULT_CASES = Path(__file__).resolve().parent / "skill_eval" / "cases.yaml"
+DEFAULT_CHECKLISTS = Path(__file__).resolve().parent / "skill_eval" / "checklists.yaml"
 OUTPUT_ROOT = REPO_ROOT / "outputs" / "skill_eval"
 
 
@@ -344,6 +347,18 @@ def cmd_compare(args: argparse.Namespace) -> None:
     print(f"              {out_dir / 'compare.md'}")
 
 
+def cmd_score(args: argparse.Namespace) -> None:
+    """実行結果を「必ず出す図・値」1 項目ずつ、出たか出ないかで採点する（API は呼ばない）。"""
+    run_dirs: list[Path] = args.run_dirs
+    out_dir = args.out or run_dirs[0].parent / ("score-" + "__".join(d.name for d in run_dirs))
+    rows = write_scores(run_dirs, args.checklists, out_dir)
+    if not rows:
+        raise SystemExit("採点できる実行が無い（採点表のある reference を期待するケースが無い）")
+    print((out_dir / "scores.md").read_text(encoding="utf-8"))
+    print(f"採点結果: {out_dir / 'scores.md'}")
+    print(f"          {out_dir / 'scores.csv'}")
+
+
 def main(argv: list[str] | None = None) -> None:
     """コマンドラインの入口。"""
     parser = argparse.ArgumentParser(
@@ -395,6 +410,16 @@ def main(argv: list[str] | None = None) -> None:
     p_cmp.add_argument("run_b", type=Path, help="比べる実行（ふつうは skill を間引いた arm）")
     p_cmp.add_argument("--out", type=Path, help="レポートの置き場所（既定は run_a の隣）")
     p_cmp.set_defaults(func=cmd_compare)
+
+    p_score = sub.add_parser(
+        "score", help="実行結果を「必ず出す図・値」1 項目ずつ、出たか出ないかで採点する"
+    )
+    p_score.add_argument("run_dirs", type=Path, nargs="+", help="採点する実行（条件ごとに並べる）")
+    p_score.add_argument(
+        "--checklists", type=Path, default=DEFAULT_CHECKLISTS, help="採点表の YAML"
+    )
+    p_score.add_argument("--out", type=Path, help="出力先（既定は最初の実行の隣）")
+    p_score.set_defaults(func=cmd_score)
 
     args = parser.parse_args(argv)
     args.func(args)
