@@ -103,6 +103,39 @@ uv run python scripts/run_skill_eval.py report outputs/skill_eval/<run_id>
 まず `--only` や `--kind` で数件に絞って試してください。`cases.yaml` の `max_budget_usd`（既定 5 ドル）と
 `timeout_min`（既定 40 分）で 1 ケースごとに上限を掛けています。
 
+## skill 要否テスト（skill を外して同じプロンプトを実行する）
+
+発火テストで分かるのは「skill が読まれるか」までです。その skill が無くても同じ図と値が出るのなら、
+skill に書く必要はありません。これを確かめるために、skill を間引いた sandbox で同じケースを実行できます。
+
+```bash
+# 現行の skill で実行（いつもの発火テスト）
+uv run python scripts/run_skill_eval.py run --only glm-explicit --model claude-opus-5-5
+# *-diagnostics だけを外して、同じケース・同じモデルで実行
+uv run python scripts/run_skill_eval.py run --only glm-explicit --model claude-opus-5-5 --arm no-diagnostics
+```
+
+2 つの `index.html` を並べ、各カードの生成図・最終応答と、右側の「references の『必ず出す図』」を見比べます。
+skill を外した側でも出ている図・値は、そのモデルに対しては書かなくても出るもの（削る候補）、
+外した側にだけ無いものは skill が効いているものです。
+
+間引き方（arm）は [cases.yaml](cases.yaml) の `arms` に書きます。
+
+| arm | 内容 |
+|---|---|
+| `full`（既定） | 間引かない |
+| `no-diagnostics` | `*-diagnostics` のルーターと references、それを指す記述（CLAUDE.md の Hard Rule とルーティング表の行、analysis-reporting の診断サマリー節など）を外す。基本 skill は残す |
+| `bare` | `.claude/` と `CLAUDE.md` を置かない（モデルの素の挙動） |
+
+- 間引くのは sandbox の中のコピーだけです。間引いた状態を最初のコミットにするので、エージェントからは
+  「最初からその skill が無いリポジトリ」に見えます
+- `full` 以外の arm では期待する skill 自体が無いので、発火の合否は付けません（一覧の発火欄は ➖）
+- 比べるときは `--model` でモデルを固定してください。1 回ずつの比較は実行ごとのばらつきと区別できないので、
+  結論を出すなら `--repeat` で複数回実行します
+- 図と値が出ているかは人が見て判断します（自動判定は未実装）
+- `arms` の指定が skill の現状に当たらなくなると（見出しの改名など）、実行前にエラーで止まります。
+  `no-diagnostics` を当てた後に `*-diagnostics` を指す記述が残らないことは、テストで確かめています
+
 ## 出力
 
 `outputs/skill_eval/<run_id>/`（gitignore 対象）に書き出します。
@@ -111,7 +144,7 @@ uv run python scripts/run_skill_eval.py report outputs/skill_eval/<run_id>
 |---|---|
 | `index.html` | 一覧表 + ケースごとのカード（プロンプト、読んだ順、生成図のサムネイル、references の「必ず出す図」、最終応答） |
 | `summary.md` | 同じ一覧の Markdown 版 |
-| `run.json` | 実行条件（claude のバージョン、モデル、git HEAD、skills の内容ハッシュ、起動コマンド） |
+| `run.json` | 実行条件（claude のバージョン、モデル、git HEAD、skills の内容ハッシュ、起動コマンド、arm と間引いた内容） |
 | `skills_snapshot/`・`cases.yaml` | 実行時点の skill とケース定義（後で skill を直してもレポートを再現できる） |
 | `<case>/r<n>/transcript.jsonl` | stream-json の全記録 |
 | `<case>/r<n>/result.json` | 判定と集計値 |

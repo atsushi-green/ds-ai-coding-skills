@@ -11,6 +11,7 @@ sandbox で新しく作られた図を回収して `outputs/skill_eval/<run_id>/
     uv run python scripts/run_skill_eval.py run --core          # 基本セット（core タグ）だけ
     uv run python scripts/run_skill_eval.py run --only glm-explicit,cluster-kmeans --jobs 2
     uv run python scripts/run_skill_eval.py run --kind negative --repeat 3
+    uv run python scripts/run_skill_eval.py run --only glm-explicit --arm no-diagnostics
     uv run python scripts/run_skill_eval.py report outputs/skill_eval/<run_id>
 """
 
@@ -30,7 +31,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
-from skill_eval.cases import Case, EvalConfig, load_suite
+from skill_eval.arms import FULL_ARM, Arm
+from skill_eval.cases import Case, EvalConfig, load_arms, load_suite
 from skill_eval.datasets import GENERATORS
 from skill_eval.evaluate import evaluate, read_reports
 from skill_eval.report import write_report
@@ -134,13 +136,14 @@ def run_one(
     run_dir: Path,
     sandbox_root: Path,
     keep_sandbox: bool,
+    arm: Arm,
 ) -> dict:
     """1 ケース × 1 反復を実行し、result.json を書いて評価結果を返す。"""
     out_dir = run_dir / case.id / f"r{rep}"
     out_dir.mkdir(parents=True, exist_ok=True)
     sandbox = sandbox_root / f"{case.id}__r{rep}"
     extra_data = {f"data/raw/{d}.csv": dataset_path(sandbox_root, d) for d in case.datasets}
-    build_sandbox(REPO_ROOT, sandbox, config, extra_data)
+    arm_ops = build_sandbox(REPO_ROOT, sandbox, config, extra_data, arm)
     pyproject_before = (sandbox / "pyproject.toml").read_text(encoding="utf-8")
     before = snapshot(sandbox)
 
@@ -165,7 +168,10 @@ def run_one(
         SKILLS_DIR,
         timed_out=timed_out,
         report_texts=read_reports(out_dir / "files", changed),
+        check_firing=arm.is_full,
     )
+    result["arm"] = arm.name
+    result["arm_ops"] = arm_ops
     result["sandbox"] = str(sandbox) if keep_sandbox else None
     (out_dir / "result.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -200,8 +206,14 @@ def cmd_run(args: argparse.Namespace) -> None:
     selected = select_cases(cases, args)
     if not selected:
         raise SystemExit("実行対象のケースが無い")
+    arms = load_arms(args.cases)
+    if args.arm not in arms:
+        raise SystemExit(f"未知の arm: {args.arm}（cases.yaml にあるのは {sorted(arms)}）")
+    arm = arms[args.arm]
 
-    run_id = args.run_id or datetime.now().strftime("%Y%m%d-%H%M%S")
+    # skill を間引いた実行は、同じ時刻の full の実行と取り違えないよう名前に arm を付ける
+    suffix = "" if arm.is_full else f"-{arm.name}"
+    run_id = args.run_id or datetime.now().strftime("%Y%m%d-%H%M%S") + suffix
     run_dir = OUTPUT_ROOT / run_id
     sandbox_root = (args.sandbox_root or Path(tempfile.gettempdir()) / "skill-eval") / run_id
     jobs = [(c, rep) for c in selected for rep in range(1, args.repeat + 1)]
@@ -211,6 +223,10 @@ def cmd_run(args: argparse.Namespace) -> None:
     print(f"sandbox: {sandbox_root}")
     print("コマンド（プロンプトは標準入力で渡す）:")
     print("  " + shlex.join(claude_command(config)))
+    if not arm.is_full:
+        print(f"arm: {arm.name} — {arm.description}（発火の合否は付けない）")
+        for line in arm.describe():
+            print(f"  - {line}")
     if args.dry_run:
         for c, rep in jobs:
             print(f"  - {c.id} r{rep}: {' '.join(c.prompt.split())[:80]}")
@@ -230,6 +246,7 @@ def cmd_run(args: argparse.Namespace) -> None:
         "claude_version": _claude_version(config),
         "config": dataclasses.asdict(config),
         "command": claude_command(config),
+        "arm": {"name": arm.name, "description": arm.description, "operations": arm.describe()},
         "jobs": [f"{c.id}/r{rep}" for c, rep in jobs],
     }
     (run_dir / "run.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), "utf-8")
@@ -239,7 +256,10 @@ def cmd_run(args: argparse.Namespace) -> None:
     lock = threading.Lock()
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
         futures = {
-            pool.submit(run_one, c, rep, config, run_dir, sandbox_root, args.keep_sandbox): (c, rep)
+            pool.submit(run_one, c, rep, config, run_dir, sandbox_root, args.keep_sandbox, arm): (
+                c,
+                rep,
+            )
             for c, rep in jobs
         }
         for fut in as_completed(futures):
@@ -283,8 +303,12 @@ def reevaluate(run_dir: Path, cases: list[Case], skills_dir: Path) -> int:
             skills_dir,
             timed_out=old["timed_out"],
             report_texts=read_reports(out_dir / "files", changed),
+            # skill を間引いた arm の実行には、判定し直しても発火の合否を付けない
+            check_firing=old.get("arm", FULL_ARM) == FULL_ARM,
         )
-        new["sandbox"] = old.get("sandbox")
+        for key in ("arm", "arm_ops", "sandbox"):
+            if key in old:
+                new[key] = old[key]
         path.write_text(json.dumps(new, ensure_ascii=False, indent=2), encoding="utf-8")
         n += 1
     return n
@@ -323,6 +347,11 @@ def main(argv: list[str] | None = None) -> None:
     p_run.add_argument("--include-slow", action="store_true", help="slow タグのケースも実行")
     p_run.add_argument("--repeat", type=int, default=1, help="各ケースの反復回数（発火率を見る）")
     p_run.add_argument("--jobs", type=int, default=2, help="並列数")
+    p_run.add_argument(
+        "--arm",
+        default=FULL_ARM,
+        help="skill をどう間引いて実行するか（cases.yaml の arms。既定の full は間引かない）",
+    )
     p_run.add_argument("--model", help="cases.yaml の model を上書き")
     p_run.add_argument("--effort", help="cases.yaml の effort を上書き")
     p_run.add_argument("--max-budget-usd", type=float, help="1 実行あたりの費用上限")

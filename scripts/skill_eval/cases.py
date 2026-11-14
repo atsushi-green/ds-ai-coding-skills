@@ -9,6 +9,7 @@ from typing import Any
 
 import yaml
 
+from skill_eval.arms import Arm, parse_arms
 from skill_eval.datasets import GENERATORS
 
 KINDS = ("explicit", "implicit", "scope", "negative")
@@ -168,6 +169,12 @@ def load_variants(path: Path) -> dict[str, tuple[str, ...]]:
     """cases.yaml の variants（references の stem → 分岐名の一覧）を返す。"""
     with path.open(encoding="utf-8") as f:
         return _parse_variants(yaml.safe_load(f).get("variants"))
+
+
+def load_arms(path: Path) -> dict[str, Arm]:
+    """cases.yaml の arms（skill 要否テストで比べる条件）を返す。`full` は常に含まれる。"""
+    with path.open(encoding="utf-8") as f:
+        return parse_arms(yaml.safe_load(f).get("arms"))
 
 
 def figure_table_heads(ref_path: Path) -> list[str]:

@@ -83,6 +83,31 @@ config:
   data_files:
     - data/raw/train.csv
 
+# skill 要否テストで比べる条件（arm）。`run --arm <名前>` で選ぶ。sandbox にリポジトリをコピーした直後、
+# ここに書いた操作で skill を間引いてから実行する（リポジトリの skill には触れない）。
+#   remove         sandbox から消すパス（glob）
+#   drop_sections  ファイル → 消す節の見出し（その節だけを消す）
+#   drop_lines     files の各ファイルから、patterns（正規表現）に当たる行を消す
+# full 以外の arm では期待する skill 自体が無いので、発火の合否は付けない。
+arms:
+  full:
+    description: 現行の skill をそのまま使う（発火テストと同じ）
+  no-diagnostics:
+    description: "*-diagnostics の機能だけを外す（ルーターと references、それを指す記述）。基本 skill は残す"
+    remove:
+      - ".claude/skills/*-diagnostics"
+      - ".claude/skills/statistical-ml-review" # 手法 → references の対応表を持つ
+      - "docs/agent/diagnostics-reference-template.md"
+    drop_sections:
+      ".claude/skills/analysis-reporting/SKILL.md": ["## Diagnostics Summary（診断サマリー）"]
+      ".claude/skills/analysis-reporting/references/report-template.md": ["### 診断サマリー"]
+    drop_lines:
+      - files: ["CLAUDE.md", "README.md", ".claude/skills/**/*.md"]
+        patterns: ["diagnostics", "診断", "必ず出す", "statistical-ml-review"]
+  bare:
+    description: skill も CLAUDE.md も置かない（モデルの素の挙動）
+    remove: [".claude", "CLAUDE.md", "README.md", "docs/agent"]
+
 # references の中で、手法・条件によって「必ず出す図」が分かれる分岐。キーは references のファイル名（拡張子なし）。
 # 各ケースの covers でどの分岐を試すかを書き、すべての分岐が少なくとも 1 ケースで試されていることをテストで確かめる。
 # 「必ず出す図」を表で書いている references は、表の 1 列目をそのまま分岐名にする（行を足すとテストが落ちて気づける）。

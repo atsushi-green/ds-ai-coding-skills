@@ -21,6 +21,7 @@ import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 
+from skill_eval.arms import Arm, apply_arm
 from skill_eval.cases import EvalConfig
 
 UV_CACHE_SUBDIR = ".uv-cache"
@@ -59,7 +60,8 @@ def build_sandbox(
     dest: Path,
     config: EvalConfig,
     extra_data: dict[str, Path] | None = None,
-) -> None:
+    arm: Arm | None = None,
+) -> list[str]:
     """リポジトリの必要部分だけをコピーした sandbox を作り、git と uv を初期化する。
 
     Args:
@@ -67,10 +69,15 @@ def build_sandbox(
         dest: sandbox のディレクトリ（存在していてはいけない）。
         config: コピー対象とデータファイルの指定。
         extra_data: sandbox 内の相対パス → コピー元。ケースごとの題材データに使う。
+        arm: skill 要否テストの条件。コピーした skill を、git の初期化より前に間引く。
+
+    Returns:
+        arm で行った操作の記録（arm が無い・full なら空）。
 
     Raises:
         FileExistsError: dest が既に存在する場合。
         FileNotFoundError: 指定したデータファイルが存在しない場合。
+        ValueError: arm が消す対象のパス・見出しが見つからない場合。
     """
     dest.mkdir(parents=True, exist_ok=False)
     ignore = shutil.ignore_patterns(".DS_Store", "__pycache__")
@@ -85,6 +92,8 @@ def build_sandbox(
             shutil.copytree(src, target, ignore=ignore)
         else:
             shutil.copy2(src, target)
+    # エージェントから見て「最初からその skill が無いリポジトリ」になるよう、コミットの前に間引く
+    arm_ops = apply_arm(dest, arm) if arm is not None else []
     for d in DATA_DIRS:
         (dest / d).mkdir(parents=True, exist_ok=True)
         (dest / d / ".gitkeep").touch()
@@ -107,6 +116,7 @@ def build_sandbox(
     subprocess.run([*git, "commit", "-q", "-m", "sandbox"], cwd=dest, check=True)
     if (dest / "pyproject.toml").is_file():
         subprocess.run(["uv", "sync", "--quiet"], cwd=dest, check=True)
+    return arm_ops
 
 
 def snapshot(root: Path) -> Snapshot:
