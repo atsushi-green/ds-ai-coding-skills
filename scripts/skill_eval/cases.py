@@ -284,3 +284,42 @@ def expected_figures(ref_path: Path, *, tables_only: bool = False) -> list[str]:
             # Markdown の強調とコード記法を落として一覧で読みやすくする
             items.append(re.sub(r"[`*]", "", head).strip())
     return items
+
+
+def expected_values(ref_path: Path) -> list[str]:
+    """references の「必ず出す値」節の表から、値の項目名を取り出す。
+
+    表の「項目」列を返す。「区分」列がある表（glm の「共通」「二値」など）は `区分: 項目` にする。
+    合格基準と違反時の対処は references 本体を見る。
+
+    Args:
+        ref_path: references の Markdown ファイル。
+
+    Returns:
+        値の項目名のリスト。節や表が無ければ空。
+    """
+    items: list[str] = []
+    in_section = False
+    item_col: int | None = None
+    group_col: int | None = None
+    for line in ref_path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "):
+            in_section = line.startswith("## 必ず出す値")
+            item_col = group_col = None
+            continue
+        if not in_section or not line.startswith("|") or TABLE_SEP_RE.match(line):
+            continue
+        # エスケープされた \| はセル区切りではない
+        cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
+        if item_col is None:
+            # 見出し行。「項目」列が無い表は対象外
+            if "項目" in cells:
+                item_col = cells.index("項目")
+                group_col = cells.index("区分") if "区分" in cells else None
+            continue
+        if item_col < len(cells):
+            head = cells[item_col]
+            if group_col is not None and group_col < len(cells):
+                head = f"{cells[group_col]}: {head}"
+            items.append(re.sub(r"[`*]", "", head).replace("\\|", "|").strip())
+    return items

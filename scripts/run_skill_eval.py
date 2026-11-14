@@ -13,6 +13,7 @@ sandbox で新しく作られた図を回収して `outputs/skill_eval/<run_id>/
     uv run python scripts/run_skill_eval.py run --kind negative --repeat 3
     uv run python scripts/run_skill_eval.py run --only glm-explicit --arm no-diagnostics
     uv run python scripts/run_skill_eval.py report outputs/skill_eval/<run_id>
+    uv run python scripts/run_skill_eval.py compare outputs/skill_eval/<a> outputs/skill_eval/<b>
 """
 
 from __future__ import annotations
@@ -33,6 +34,7 @@ from pathlib import Path
 
 from skill_eval.arms import FULL_ARM, Arm
 from skill_eval.cases import Case, EvalConfig, load_arms, load_suite
+from skill_eval.compare import write_compare
 from skill_eval.datasets import GENERATORS
 from skill_eval.evaluate import evaluate, read_reports
 from skill_eval.report import write_report
@@ -327,6 +329,21 @@ def cmd_report(args: argparse.Namespace) -> None:
     print(f"レポート: {run_dir / 'index.html'}")
 
 
+def cmd_compare(args: argparse.Namespace) -> None:
+    """2 つの実行結果を、ケースごとに横に並べたレポートにする（API は呼ばない）。"""
+    run_a: Path = args.run_a
+    run_b: Path = args.run_b
+    # ケース定義と「必ず出す図・値」は、基準にする側（A）の実行時点のものを使う
+    snapshot_dir = run_a / "skills_snapshot"
+    skills_dir = snapshot_dir if snapshot_dir.is_dir() else SKILLS_DIR
+    cases_path = run_a / "cases.yaml" if (run_a / "cases.yaml").is_file() else args.cases
+    _, cases = load_suite(cases_path, skills_dir)
+    out_dir = args.out or run_a.parent / f"compare-{run_a.name}__{run_b.name}"
+    write_compare(run_a, run_b, out_dir, cases, skills_dir)
+    print(f"比較レポート: {out_dir / 'compare.html'}")
+    print(f"              {out_dir / 'compare.md'}")
+
+
 def main(argv: list[str] | None = None) -> None:
     """コマンドラインの入口。"""
     parser = argparse.ArgumentParser(
@@ -370,6 +387,14 @@ def main(argv: list[str] | None = None) -> None:
         "--no-reevaluate", action="store_true", help="result.json を判定し直さずに表だけ作る"
     )
     p_rep.set_defaults(func=cmd_report)
+
+    p_cmp = sub.add_parser(
+        "compare", help="2 つの実行結果（skill あり・なしなど）を横に並べたレポートを作る"
+    )
+    p_cmp.add_argument("run_a", type=Path, help="基準にする実行（ふつうは full）")
+    p_cmp.add_argument("run_b", type=Path, help="比べる実行（ふつうは skill を間引いた arm）")
+    p_cmp.add_argument("--out", type=Path, help="レポートの置き場所（既定は run_a の隣）")
+    p_cmp.set_defaults(func=cmd_compare)
 
     args = parser.parse_args(argv)
     args.func(args)

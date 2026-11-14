@@ -120,7 +120,15 @@ uv run python scripts/run_skill_eval.py run --only glm-explicit --model claude-o
 uv run python scripts/run_skill_eval.py run --only glm-explicit --model claude-opus-5-5 --arm no-diagnostics
 ```
 
-2 つの `index.html` を並べ、各カードの生成図・最終応答と、右側の「references の『必ず出す図』」を見比べます。
+2 つの実行を、ケースごとに横に並べたレポートにします（API は呼びません）。
+
+```bash
+uv run python scripts/run_skill_eval.py compare outputs/skill_eval/<full の run_id> outputs/skill_eval/<arm の run_id>
+```
+
+`outputs/skill_eval/compare-<A>__<B>/` に `compare.html` と `compare.md` ができます。一覧には図の枚数・判定表の有無・
+時間と費用が並び、各カードでは生成図と最終応答を左右で見比べられます。カードの下に、そのケースの references が
+定める「必ず出す図」「必ず出す値」をチェックリストとして出します。
 skill を外した側でも出ている図・値は、そのモデルに対しては書かなくても出るもの（削る候補）、
 外した側にだけ無いものは skill が効いているものです。
 
@@ -137,7 +145,10 @@ skill を外した側でも出ている図・値は、そのモデルに対し�
 - `full` 以外の arm では期待する skill 自体が無いので、発火の合否は付けません（一覧の発火欄は ➖）
 - 比べるときは `--model` と `--effort` でモデルと effort を固定してください。1 回ずつの比較は実行ごとの
   ばらつきと区別できないので、結論を出すなら `--repeat` で複数回実行します
-- 図と値が出ているかは人が見て判断します（自動判定は未実装）
+- レポートが数えるのは機械的に分かる事実だけです。図と値が references の要求を満たしているかは、
+  チェックリストと見比べて人が判断します（自動判定は未実装）。モデル・effort・claude のバージョンが
+  揃っていない 2 つを比べると、レポートの冒頭に注意書きが出ます
+- 実際に比べた結果は [docs/skill-ablation.md](../../docs/skill-ablation.md) にあります
 - `arms` の指定が skill の現状に当たらなくなると（見出しの改名など）、実行前にエラーで止まります。
   `no-diagnostics` を当てた後に `*-diagnostics` を指す記述が残らないことは、テストで確かめています
 
