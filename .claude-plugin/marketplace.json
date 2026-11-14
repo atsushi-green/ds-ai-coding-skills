@@ -1,0 +1,26 @@
+{
+  "name": "ds-ai-coding-skills",
+  "description": "Agent skills for data scientists: the diagnostic figures and values that must accompany each analysis method",
+  "owner": {
+    "name": "redtea",
+    "url": "https://github.com/atsushi-green"
+  },
+  "plugins": [
+    {
+      "name": "ds-diagnostics",
+      "source": "./",
+      "description": "Run a statistical / ML / causal / simulation method and get its diagnostics with it: required figures, required values and a verdict table. 5 routers, 19 method references.",
+      "homepage": "https://atsushi-green.github.io/ds-ai-coding-skills/",
+      "repository": "https://github.com/atsushi-green/ds-ai-coding-skills",
+      "license": "MIT",
+      "keywords": ["data-science", "statistics", "machine-learning", "causal-inference", "diagnostics"],
+      "skills": [
+        "./.claude/skills/statistical-inference-diagnostics",
+        "./.claude/skills/predictive-modeling-diagnostics",
+        "./.claude/skills/causal-inference-diagnostics",
+        "./.claude/skills/unsupervised-eda-diagnostics",
+        "./.claude/skills/simulation-optimization-diagnostics"
+      ]
+    }
+  ]
+}
