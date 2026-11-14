@@ -36,10 +36,10 @@ ml-evaluation: # 分類
     - {id: val-pipeline, kind: 値, label: 前処理が Pipeline の中にあるか, code: ['Pipeline\(', 'make_pipeline\(']}
     - {id: val-split, kind: 値, label: 分割方法, code: ['stratify\s*=', 'Stratified\w*KFold', 'GroupKFold', 'TimeSeriesSplit']}
     - {id: val-score-vs-baseline, kind: 値, label: 汎化スコアと幅（ベースラインとの比較）, code_all: ['Dummy(Classifier|Regressor)', 'cross_val|KFold|bootstrap|resample']}
-    - {id: val-train-val-gap, kind: 値, label: train と validation のスコアの差, report: ['train.{0,24}(差|ギャップ|gap)', '(差|ギャップ).{0,12}train', 'train_val_gap']}
-    - {id: val-test-once, kind: 値, label: テストデータでの評価回数, report: ['(テスト|test|ホールドアウト|最終評価|最後の確認).{0,30}(1\s*回|一度)', '(1\s*回|一度)(だけ|のみ).{0,12}(評価|テスト)']}
+    - {id: val-train-val-gap, kind: 値, label: train と validation のスコアの差, report: ['(train|学習(用)?データ|訓練).{0,30}((?<!交)差|ギャップ|gap)', '((?<!交)差|ギャップ).{0,12}train', 'train_val_gap']}
+    - {id: val-test-once, kind: 値, label: テストデータでの評価回数, report: ['(テスト|test|ホールドアウト|最終評価|最後の確認|評価用|検証データ).{0,30}(1\s*回|一度)', '(1\s*回|一度)(だけ|のみ).{0,12}(評価|テスト)']}
     - {id: val-tuning-split, kind: 値, label: チューニング時の分割, report: ['チューニング', 'ハイパーパラメータ', 'nested'], allow_negation: true}
-    - {id: val-base-rate, kind: 値, label: 陽性率, report: ['陽性率', '生存率.{0,12}\d', 'クラスの偏り']}
+    - {id: val-base-rate, kind: 値, label: 陽性率, report: ['陽性率', '生存率.{0,24}\d', 'クラスの偏り']}
     - {id: val-mean-pred, kind: 値, label: 平均予測確率 ÷ 実際の陽性率, report: ['平均予測確率', '予測確率の平均', 'mean_pred']}
 
 clustering: # k-means
@@ -47,13 +47,13 @@ clustering: # k-means
     - {id: fig-silhouette-plot, kind: 図, label: シルエットプロット（サンプル別）, code: ['silhouette_samples\(']}
     - {id: fig-pca, kind: 図, label: PCA 2 次元射影, code: ['PCA\(']}
     - {id: fig-profile, kind: 図, label: クラスタプロファイル, code: ['heatmap\(', 'imshow\(', 'pcolormesh\(']}
-    - {id: fig-external, kind: 図, label: 外部変数プロファイル, report: ['外部変数', '(クラスタ|セグメント|分割).{0,20}使(って|わ)(い)?(ません|ない|なかった)', '未使用']}
+    - {id: fig-external, kind: 図, label: 外部変数プロファイル, report: ['外部変数', '(クラスタ|セグメント|分割|分類|分け).{0,24}使(って|わ)(い)?(ません|ない|なかった|ず)', '未使用']}
     - {id: fig-k-scan, kind: 図, label: エルボーとシルエット平均の k 走査, code_all: ['inertia_', 'silhouette_score\(']}
     - {id: fig-null-band, kind: 図, label: 走査図の帰無ベースライン, code: ['permutation\(', 'permuted', 'shuffle\(']}
     - {id: val-scaling, kind: 値, label: スケーリングの方針, report: ['標準化', 'スケーリング', 'log1p', '対数変換']}
-    - {id: val-k-rationale, kind: 値, label: 採用した k とその根拠, report: ['k\s*[=＝]\s*\d+.{0,60}(採用|選)', '(採用|選).{0,60}k\s*[=＝]\s*\d+', 'k の根拠']}
+    - {id: val-k-rationale, kind: 値, label: 採用した k とその根拠, report: ['k\s*[=＝]\s*\d+.{0,60}(採用|選)', '(採用|選).{0,60}k\s*[=＝]\s*\d+', 'k\s*[=＝]\s*\d+.{0,14}(にした|とした|に決め)', 'k\s*[=＝]\s*\d+.{0,20}(最大|最良|最も高)', 'k の(根拠|決め方|選び方)']}
     - {id: val-null, kind: 値, label: 帰無ベースラインとの比較, report: ['帰無'], code: ['permutation\(']}
-    - {id: val-silhouette-mean, kind: 値, label: シルエット平均, report: ['シルエット.{0,16}\d\.\d']}
+    - {id: val-silhouette-mean, kind: 値, label: シルエット平均, report: ['(シルエット|silhouette).{0,24}\d\.\d']}
     - {id: val-cluster-n, kind: 値, label: 各クラスタの n, report: ['人数', '\(?n\s*[=＝]\s*\d+', '最小クラスタ']}
     - {id: val-stability, kind: 値, label: 安定性（ARI）, code: ['adjusted_rand_score\('], report: ['ARI.{0,30}\d\.\d']}
     - {id: val-seed, kind: 値, label: n_init と乱数 seed, report: ['n_init', 'seed\s*[=＝]\s*\d+', '(乱数|シード).{0,12}\d+']}
