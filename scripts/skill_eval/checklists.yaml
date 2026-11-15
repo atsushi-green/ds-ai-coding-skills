@@ -44,6 +44,18 @@ ml-evaluation: # 分類
     - {id: val-base-rate, kind: 値, label: 陽性率, report: ['陽性率', '生存率.{0,24}\d', 'クラスの偏り']}
     - {id: val-mean-pred, kind: 値, label: 平均予測確率 ÷ 実際の陽性率, report: ['平均予測確率', '予測確率の平均', 'mean_pred']}
 
+# 欠測機構の見立ては「ランダムな欠損ではない」「欠損していない人より低い」のように否定の形で
+# 書かれるので、否定の文も数える。MCAR などの用語を使わず平易に書いた報告も拾う
+missing-data: # 欠測の代入（欠測のある列が 2 つ以上）。外れ値・EDA の行は入れていない
+  items:
+    - {id: fig-matrix, kind: 図, label: 欠測マトリクス, code: ['msno\.matrix\('], code_all: ['is_null\(|isnull\(|isna\(', 'imshow\(|pcolormesh\(|matshow\(|heatmap\(']}
+    - {id: fig-heatmap, kind: 図, label: 欠測相関ヒートマップ, code: ['msno\.heatmap\('], code_all: ['is_null\(|isnull\(|isna\(', '\.corr\(|corrcoef\(', 'imshow\(|pcolormesh\(|matshow\(|heatmap\(']}
+    - {id: fig-imputed-dist, kind: 図, label: 観測値 vs 代入値の分布比較, code_all: ['hist\(|histplot\(|kdeplot\(|kde\(', 'imput|代入|補完']}
+    - {id: val-miss-rate, kind: 値, label: 変数別欠測率, report: ['(欠測|欠損)率', '(欠測|欠損).{0,16}\d+(\.\d+)?\s*[%％]', '\d[\d,]*\s*件\s*[（(]\s*\d+(\.\d+)?\s*[%％]']}
+    - {id: val-mechanism, kind: 値, label: 欠測機構の見立て, report: ['MCAR', '\bMAR\b', 'MNAR', '(欠測|欠損)(の)?(機構|メカニズム)', 'ランダム(な|に)', '偶然の(欠損|欠測)', '(欠損|欠測|欠けて).{0,24}(自体|そのもの)に(情報|意味)', '他の列(で|から)説明'], allow_negation: true}
+    - {id: val-method-n, kind: 値, label: 採用した処理と失う n, report: ['リストワイズ', '多重代入', 'MICE', '(中央値|最頻値|平均値|回帰|モデル).{0,16}(代入|補完|埋め)', '(代入|補完|埋め).{0,16}(中央値|最頻値|平均値)']}
+    - {id: val-oplog, kind: 値, label: 除外・変換・代入の操作ログ（件数付き）, report: ['\d[\d,]*\s*(件|行|人|個).{0,80}(代入|補完|埋め|除[外いきく]|削除|置き換え)', '(代入|補完|埋め|除[外いきく]|削除).{0,24}\d[\d,]*\s*(件|行|人|個)']}
+
 clustering: # k-means
   items:
     - {id: fig-silhouette-plot, kind: 図, label: シルエットプロット（サンプル別）, code: ['silhouette_samples\(']}
