@@ -139,6 +139,7 @@ def evaluate(
         "duration_ms": tx.result.get("duration_ms"),
         "total_cost_usd": tx.result.get("total_cost_usd"),
         "permission_denials": denials,
+        "quota": tx.quota(),
         "final_text": tx.final_text,
         "parse_errors": tx.parse_errors,
     }

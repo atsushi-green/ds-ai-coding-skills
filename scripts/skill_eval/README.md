@@ -108,6 +108,28 @@ uv run python scripts/run_skill_eval.py report outputs/skill_eval/<run_id>
 Claude Code の中（Bash ツールや VS Code 拡張）からハーネスを実行しても、親セッションの effort などは
 引き継ぎません（親が渡してくる `CLAUDE_EFFORT` などの環境変数を、起動する `claude` には渡さない）。
 
+### 利用枠の上限に当たらないようにする
+
+サブスクリプションの利用枠（5 時間枠・7 日枠）の上限に達すると、実行は途中でも打ち切られ、そこまでの分が
+無駄になります。`run` は、使用率が目安（`--max-utilization`、既定 0.85）以上になったら次の実行を始めません。
+
+- 始める前に、短い問い合わせを 1 回送って使用率を読みます。目安以上なら、何も作らずに終了します
+- 1 件終わるたびに、その実行の記録から使用率を読みます。目安以上なら、残りは始めません
+- 止まったら、同じコマンドに `--run-id <出力ディレクトリ名> --resume` を付けて実行すると、終わっていない
+  実行だけを続きから行います。上限で打ち切られた実行（ERROR）はやり直し、元の出力は `_interrupted/` に残します
+
+```bash
+# いまの使用率を見る
+uv run python scripts/run_skill_eval.py quota
+
+# 1 件ずつ実行し、止まっても同じコマンドで続きから実行できるようにしておく
+uv run python scripts/run_skill_eval.py run --only glm-explicit --repeat 3 --jobs 1 \
+  --run-id glm-full --resume
+```
+
+1 件ずつ（`--jobs 1`）にすると、上限で打ち切られるのは多くても実行中の 1 件です。使用率で止めたくないときは
+`--max-utilization 0` を指定します（上限に達して断られたときは、この場合も残りを始めません）。
+
 ## skill 要否テスト（skill を外して同じプロンプトを実行する）
 
 発火テストで分かるのは「skill が読まれるか」までです。その skill が無くても同じ図と値が出るのなら、

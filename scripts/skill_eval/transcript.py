@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -71,12 +71,14 @@ class Transcript:
         tool_calls: ツール呼び出しを出現順に並べたもの。
         result: 最後の `result` メッセージ。無ければ空（途中終了・タイムアウト）。
         parse_errors: JSON として読めなかった行の数。
+        rate_limits: `rate_limit_event` の `rate_limit_info` を届いた順に並べたもの。
     """
 
     init: dict[str, Any]
     tool_calls: list[ToolCall]
     result: dict[str, Any]
     parse_errors: int = 0
+    rate_limits: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
     def from_lines(cls, lines: list[str]) -> Transcript:
@@ -84,6 +86,7 @@ class Transcript:
         init: dict[str, Any] = {}
         result: dict[str, Any] = {}
         calls: list[ToolCall] = []
+        limits: list[dict[str, Any]] = []
         errors = 0
         for line in lines:
             line = line.strip()
@@ -99,6 +102,8 @@ class Transcript:
                 init = msg
             elif mtype == "result":
                 result = msg
+            elif mtype == "rate_limit_event":
+                limits.append(msg.get("rate_limit_info") or {})
             elif mtype == "assistant":
                 content = (msg.get("message") or {}).get("content") or []
                 for block in content:
@@ -111,7 +116,9 @@ class Transcript:
                                 in_subagent=msg.get("parent_tool_use_id") is not None,
                             )
                         )
-        return cls(init=init, tool_calls=calls, result=result, parse_errors=errors)
+        return cls(
+            init=init, tool_calls=calls, result=result, parse_errors=errors, rate_limits=limits
+        )
 
     @classmethod
     def from_file(cls, path: Path) -> Transcript:
@@ -187,3 +194,26 @@ class Transcript:
     def final_text(self) -> str:
         """最終応答の本文。"""
         return str(self.result.get("result") or "")
+
+    def quota(self) -> dict[str, Any] | None:
+        """利用枠（5 時間枠・7 日枠）の使用率を、最後に届いた通知から取り出す。
+
+        Returns:
+            `windows` は枠の名前（`five_hour` / `seven_day`）→ 使用率 `utilization`（0〜1）と
+            リセット時刻 `resets_at`（epoch 秒）。`rejected` は上限に達して実行を断られたか。
+            通知が 1 つも無く、断られてもいなければ None。
+        """
+        windows: dict[str, dict[str, Any]] = {}
+        rejected = self.result.get("api_error_status") == 429
+        for info in self.rate_limits:
+            rejected = rejected or info.get("status") == "rejected"
+            for name, window in (info.get("unifiedWindows") or {}).items():
+                if isinstance(window, dict) and "utilization" in window:
+                    # 後から届いた通知で上書きし、実行の終わりの時点の値を残す
+                    windows[name] = {
+                        "utilization": window["utilization"],
+                        "resets_at": window.get("resetsAt"),
+                    }
+        if not windows and not rejected:
+            return None
+        return {"windows": windows, "rejected": rejected}
