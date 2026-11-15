@@ -98,7 +98,7 @@ AGENTS.md のみの条件では、シルエットプロット、PCA 射影、安
 結果を見てから、基準を 2 つ厳しくしました。
 
 1. AGENTS.md のみの条件でも 3 回とも出ていること（6 回中 6 回）。14 項目のうち 11 項目が残りました。
-2. その行の内容が、今回のケースですべて試せていること。「分割方法」の行は時系列やグループの分割を、「チューニング時の分割」の行は nested CV を含みますが、今回のケースでは試せていません。合格基準と違反時の対処を持つ行（クラスタの人数が 5% 未満なら k を減らす、など）も残しました。
+2. その行の内容が、今回のケースですべて試せていて、出た時点で合格基準も満たしていること。「分割方法」の行は時系列やグループの分割を、「チューニング時の分割」の行は nested CV を含みますが、今回のケースでは試せていません。出ただけでは合格基準を満たしたことにならない行（クラスタの人数が 5% 未満なら k を減らす、など）も残しました。
 
 | | 内容 | 行数 |
 |---|---|---|
@@ -144,13 +144,14 @@ ROC 曲線や VIF は 1 行で出ますが、binned residual、EPV、帰無ベ�
 前提（`claude` へのログイン、`data/raw/train.csv` の配置）は [scripts/skill_eval/README.md](../scripts/skill_eval/README.md) を参照してください。
 
 ```bash
-CASES=glm-explicit,mleval-implicit,cluster-kmeans
-OPTS="--only $CASES --model claude-opus-5-5 --effort medium --repeat 3"
-uv run python scripts/run_skill_eval.py run $OPTS --arm no-diagnostics --run-id abl-none
-uv run python scripts/run_skill_eval.py run $OPTS --arm agents-md-rule --run-id abl-rule
-uv run python scripts/run_skill_eval.py run $OPTS --run-id abl-full
+# 3 条件を 3 回ずつ実行する（変えるのは --arm だけ）
+for arm in no-diagnostics agents-md-rule full; do
+  uv run python scripts/run_skill_eval.py run --only glm-explicit,mleval-implicit,cluster-kmeans \
+    --model claude-opus-5-5 --effort medium --repeat 3 --arm $arm --run-id abl-$arm
+done
 # 項目ごとに「出た回数 / 実行回数」を数える（API は呼ばない）
-uv run python scripts/run_skill_eval.py score outputs/skill_eval/abl-none outputs/skill_eval/abl-rule outputs/skill_eval/abl-full
+uv run python scripts/run_skill_eval.py score \
+  outputs/skill_eval/abl-no-diagnostics outputs/skill_eval/abl-agents-md-rule outputs/skill_eval/abl-full
 ```
 
 削る前のフルを再現するには、references を削る直前のコミット `d1c4d46` で実行してください。それより後のコミットでは、フルの条件が「削った後」になります。
