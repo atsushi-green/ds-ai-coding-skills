@@ -41,6 +41,28 @@ survival: # KM + Cox（カテゴリ共変量あり）。ログランク・AFT・
     - {id: val-hr-ci, kind: 値, label: HR + 95% CI, report_all: ['HR|ハザード比', '95\s*[%％]|信頼区間|\bCI\b']}
     - {id: val-epv, kind: 値, label: イベント数 / 共変量数, report: ['EPV', 'イベント(数)?\s*(/|÷|／)\s*(共変量|変数)', '(共変量|変数)\s*1\s*つ?(あ|当)たり', 'イベント.{0,16}(共変量|変数).{0,8}(あ|当)たり']}
 
+# 「差分」は「残差分布」にも当たるので、直前が「残」のものは数えない。カバレッジは、測った値ではなく
+# 「被覆率は名目より低い可能性がある」という注意書きだけの文を数えない
+time-series: # モデルを当てはめて予測する場合。ARIMA・VAR・変化点に固有の行（ADF / KPSS、次数の根拠など）は入れていない
+  items:
+    - {id: fig-diff, kind: 図, label: 差分後の系列, code: ['set_title\([^\n]{0,80}(?<!残)差分', 'label\s*=[^\n]{0,60}(?<!残)差分']}
+    - {id: fig-pacf, kind: 図, label: コレログラム（ACF / PACF）, code: ['plot_pacf\(', '\bpacf\(']}
+    - {id: fig-decomp, kind: 図, label: トレンド・季節・残差への分解（STL など）, code: ['STL\(', 'seasonal_decompose\(', 'set_title\([^\n]{0,80}分解']}
+    - {id: fig-resid, kind: 図, label: 残差の診断, code: ['plot_diagnostics\('], code_all: ['resid', 'plot_acf\(']}
+    - {id: fig-band, kind: 図, label: 予測区間の帯, code: ['fill_between\(']}
+    - {id: fig-origin, kind: 図, label: 予測の起点の縦線, code: ['axvline\(', 'axvspan\(']}
+    - {id: fig-naive, kind: 図, label: 季節 naive の予測を同じ軸に重ねる, code: ['label\s*=\s*f?.[^\n]{0,40}(naive|ナイーブ)']}
+    - {id: val-missing-periods, kind: 値, label: 欠測している期の数, report: ['(欠測|欠損).{0,20}\d', '\d\s*(週|行|件|か月|ヶ月).{0,10}(欠測|欠損)']}
+    - {id: val-dup, kind: 値, label: 同じ時点の重複行数, report: ['重複']}
+    - {id: val-tail, kind: 値, label: 末尾の期が完結しているか, report: ['完結', '(末尾|最終|最後)(の)?(期|週|月).{0,30}(そろ|揃|未完|除外)']}
+    - {id: val-period, kind: 値, label: 季節周期, report: ['周期']}
+    - {id: val-ljungbox, kind: 値, label: 残差の Ljung-Box p, report: ['Ljung']}
+    - {id: val-split, kind: 値, label: 分割方法（時間順の検証）, report: ['ホールドアウト', 'ローリング', 'バックテスト', '時間順', '起点']}
+    - {id: val-horizon, kind: 値, label: 予測の地平 h での評価, report: ['(104\s*週|2\s*年|24\s*(か|ヶ|ケ)月)先', '(104\s*週|2\s*年|24\s*(か|ヶ|ケ)月).{0,24}検証', '検証.{0,40}(104\s*週|2\s*年|24\s*(か|ヶ|ケ)月)']}
+    - {id: val-naive, kind: 値, label: ベースライン（季節 naive）との比較, report: ['naive', 'ナイーブ']}
+    - {id: val-mase, kind: 値, label: MASE, report: ['MASE']}
+    - {id: val-coverage, kind: 値, label: 予測区間の実測カバレッジ, report: ['(カバレッジ|被覆率)(?!.{0,30}(可能性|かもしれ))', '(区間|帯)(の中)?に(入|収ま)']}
+
 # val-pipeline と val-score-vs-baseline は、skill なしでも毎回出たので reference から行を削った。
 # 削ったあとも出ているかを見るために、採点表には残している
 ml-evaluation: # 分類
