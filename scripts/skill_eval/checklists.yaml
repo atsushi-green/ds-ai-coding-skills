@@ -52,9 +52,9 @@ time-series: # モデルを当てはめて予測する場合。ARIMA・VAR・変
     - {id: fig-band, kind: 図, label: 予測区間の帯, code: ['fill_between\(']}
     - {id: fig-origin, kind: 図, label: 予測の起点の縦線, code: ['axvline\(', 'axvspan\(']}
     - {id: fig-naive, kind: 図, label: 季節 naive の予測を同じ軸に重ねる, code: ['label\s*=\s*f?.[^\n]{0,40}(naive|ナイーブ)']}
-    - {id: val-missing-periods, kind: 値, label: 欠測している期の数, report: ['(欠測|欠損).{0,20}\d', '\d\s*(週|行|件|か月|ヶ月).{0,10}(欠測|欠損)']}
+    - {id: val-missing-periods, kind: 値, label: 欠測している期の数, report: ['(欠測|欠損).{0,20}\d', '\d\s*(週|行|件|か月|ヶ月).{0,10}(欠測|欠損)', '(空|抜け)[^。\n]{0,8}(週|期|月)\s*\d']}
     - {id: val-dup, kind: 値, label: 同じ時点の重複行数, report: ['重複']}
-    - {id: val-tail, kind: 値, label: 末尾の期が完結しているか, report: ['完結', '(末尾|最終|最後)(の)?(期|週|月).{0,30}(そろ|揃|未完|除外)']}
+    - {id: val-tail, kind: 値, label: 末尾の期が完結しているか, report: ['完結', '(末尾|最終|最後)(の)?(期|週|月).{0,30}(そろ|揃|未完|除外|確定)']}
     - {id: val-period, kind: 値, label: 季節周期, report: ['周期']}
     - {id: val-ljungbox, kind: 値, label: 残差の Ljung-Box p, report: ['Ljung']}
     - {id: val-split, kind: 値, label: 分割方法（時間順の検証）, report: ['ホールドアウト', 'ローリング', 'バックテスト', '時間順', '起点']}
