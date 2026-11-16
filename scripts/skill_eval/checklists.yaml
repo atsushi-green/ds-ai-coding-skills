@@ -33,7 +33,7 @@ survival: # KM + Cox（カテゴリ共変量あり）。ログランク・AFT・
     - {id: fig-km-censor, kind: 図, label: KM 曲線の打ち切りマーク, code: ['show_censors\s*=\s*True', 'censor_styles']}
     - {id: fig-km-atrisk, kind: 図, label: KM 曲線の at-risk テーブル, code: ['add_at_risk_counts\(', 'at_risk_counts\s*=\s*True']}
     - {id: fig-schoenfeld, kind: 図, label: Schoenfeld 残差プロット, code: ['check_assumptions\(', 'compute_residuals\([^)]*schoenfeld', 'schoenfeld.{0,200}(scatter|plot)\(']}
-    - {id: fig-forest, kind: 図, label: HR と 95% CI のフォレストプロット, code: ['forest', 'cph\.plot\(', 'hazard_ratios?.{0,40}\.png']}
+    - {id: fig-forest, kind: 図, label: HR と 95% CI のフォレストプロット, code: ['forest', 'フォレスト', 'cph\.plot\(', 'hazard_ratios?.{0,40}\.png']}
     - {id: fig-loglog, kind: 図, label: カテゴリ共変量の log(-log(S(t))) プロット, code: ['plot_loglogs\(', 'log\(\s*-\s*np\.log\(', 'loglog']}
     - {id: val-censoring, kind: 値, label: 打ち切りの割合・追跡期間の中央値・イベント数, report_all: ['打ち切り', '追跡(期間)?(の)?中央値|追跡期間.{0,12}中央値|中央値.{0,12}追跡']}
     - {id: val-schoenfeld-p, kind: 値, label: Schoenfeld 検定 p, report: ['Schoenfeld', 'シェーンフェルド', '比例ハザード.{0,24}(検定|p\s*[=＝<>])']}
