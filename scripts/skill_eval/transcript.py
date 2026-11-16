@@ -126,13 +126,18 @@ class Transcript:
         return cls.from_lines(path.read_text(encoding="utf-8").splitlines())
 
     @property
+    def skill_names(self) -> list[str]:
+        """セッション開始時に一覧に載っていた skill の名前（`plugin:skill` の形のまま）。"""
+        skills = self.init.get("skills") or []
+        names = [s.get("name", "") if isinstance(s, dict) else str(s) for s in skills]
+        return [n for n in names if n]
+
+    @property
     def available_skills(self) -> list[str] | None:
         """セッション開始時に一覧に載っていた skill 名。init に情報が無ければ None。"""
-        skills = self.init.get("skills")
-        if skills is None:
+        if self.init.get("skills") is None:
             return None
-        names = [s.get("name", "") if isinstance(s, dict) else str(s) for s in skills]
-        return sorted({normalize_skill_name(n) for n in names if n})
+        return sorted({normalize_skill_name(n) for n in self.skill_names})
 
     def skill_events(self) -> list[SkillEvent]:
         """skill の発火と skill ファイルの読み込みを出現順に返す。"""

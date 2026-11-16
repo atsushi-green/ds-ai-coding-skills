@@ -164,6 +164,8 @@ def score_run(run_dir: Path, checklists: dict[str, list[Item]]) -> list[dict[str
     """1 つの実行ディレクトリを採点する。
 
     採点表のある reference を期待しているケースだけが対象。実行が落ちた（ERROR）ものは除く。
+    skill を外した条件なのに、プロジェクトの外にある同名の skill が見えていた実行も除く
+    （外したことにならないため）。
 
     Returns:
         1 項目 1 行の辞書（run / arm / case / rep / reference / item / kind / label / present）。
@@ -174,6 +176,8 @@ def score_run(run_dir: Path, checklists: dict[str, list[Item]]) -> list[dict[str
     rows: list[dict[str, Any]] = []
     for res in load_results(run_dir):
         if res["status"] == "ERROR":
+            continue
+        if arm != "full" and res.get("outside_skill_copies"):
             continue
         code, sentences = gather_texts(run_dir / res["_dir"] / "files", res)
         for ref_path in res["expected_references"]:

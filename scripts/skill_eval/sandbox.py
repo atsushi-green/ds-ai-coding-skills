@@ -14,6 +14,7 @@ sandbox 側で書き換えられても元データは無傷。
 from __future__ import annotations
 
 import difflib
+import json
 import os
 import shutil
 import stat
@@ -244,6 +245,9 @@ def claude_command(config: EvalConfig) -> list[str]:
         cmd += ["--max-budget-usd", str(config.max_budget_usd)]
     if config.append_system_prompt.strip():
         cmd += ["--append-system-prompt", config.append_system_prompt.strip()]
+    if config.skill_overrides:
+        # プロジェクトの外にある同名の skill を見えなくする（isolation.py）
+        cmd += ["--settings", json.dumps({"skillOverrides": config.skill_overrides})]
     if config.allowed_tools:
         cmd += ["--allowedTools", *config.allowed_tools]
     if config.disallowed_tools:

@@ -6,6 +6,7 @@
 - 「確認していません」と書いてあるだけの項目は「出た」に数えない
 - 図の項目は、図のファイルが作られていなければ「出た」に数えない
 - 実行が落ちたものは採点に入れない
+- skill を外した条件で、プロジェクトの外にある同名の skill が見えていた実行も採点に入れない
 """
 
 from __future__ import annotations
@@ -107,6 +108,21 @@ def _write_run(run_dir: Path, arm: str, results: dict[str, dict]) -> Path:
     meta = {"run_id": run_dir.name, "arm": {"name": arm}}
     (run_dir / "run.json").write_text(json.dumps(meta), encoding="utf-8")
     return run_dir
+
+
+def test_score_skips_thinned_runs_that_saw_outside_copies(tmp_path: Path) -> None:
+    copies = ["anthropic-skills:statistical-inference-diagnostics"]
+    results = {
+        "glm-explicit/r1": {"final_text": "VIF は 2.6"},
+        # 外したはずの skill がアカウント側から見えていた実行は、外したことにならない
+        "glm-explicit/r2": {"final_text": "VIF は 2.6", "outside_skill_copies": copies},
+    }
+    checklists = load_checklists(CHECKLISTS)
+    thin = _write_run(tmp_path / "thin", "no-diagnostics", {k: dict(v) for k, v in results.items()})
+    assert {r["rep"] for r in score_run(thin, checklists)} == {"r1"}
+    # フルの条件では、同じ名前の skill が 2 つ見えていても採点から外さない
+    full = _write_run(tmp_path / "full", "full", {k: dict(v) for k, v in results.items()})
+    assert {r["rep"] for r in score_run(full, checklists)} == {"r1", "r2"}
 
 
 def test_score_run_and_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

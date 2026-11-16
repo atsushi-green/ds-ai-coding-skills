@@ -4,7 +4,7 @@ headless の Claude Code は、stream-json に `rate_limit_event` を流す。�
 リセット時刻が入っている（`Transcript.quota()`）。上限に達すると、実行の途中でも
 「You've hit your session limit」で打ち切られ、そこまでの分が無駄になる。そこで、
 
-- 実行を始める前に、短い問い合わせを 1 回送って使用率を読む（`probe_quota`）
+- 実行を始める前に、短い問い合わせを 1 回送って使用率を読む（`probe_session`）
 - 1 件終わるたびに使用率を見て、目安を超えていたら残りを始めない（`stop_reason`）
 
 の 2 か所で止める。始めなかった分は `run --resume` で続きから実行できる。
@@ -12,6 +12,7 @@ headless の Claude Code は、stream-json に `rate_limit_event` を流す。�
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from datetime import datetime
@@ -76,15 +77,19 @@ def stop_reason(quota: dict[str, Any] | None, max_utilization: float) -> str | N
     return None
 
 
-def probe_quota(config: EvalConfig, cwd: Path) -> dict[str, Any] | None:
-    """短い問い合わせを 1 回だけ送り、利用枠の使用率を読む。
+def probe_session(config: EvalConfig, cwd: Path) -> Transcript:
+    """短い問い合わせを 1 回だけ送り、そのセッションの記録を返す。
+
+    利用枠の使用率（`Transcript.quota()`）と、プロジェクトの外から見えている skill
+    （`Transcript.skill_names`）を、本番の実行を始める前に知るために使う。
 
     Args:
-        config: 起動条件（claude のパスだけを使う）。
-        cwd: 作業ディレクトリ。プロジェクトの設定を読み込ませないよう、空のディレクトリを渡す。
+        config: 起動条件。claude のパスと、`skill_overrides`（指定があれば同じように渡す）を使う。
+        cwd: 作業ディレクトリ。プロジェクトの設定や skill を読み込ませないよう、
+            空のディレクトリを渡す。
 
     Returns:
-        `Transcript.quota()` と同じ形。claude を起動できない・時間切れ・通知が無いときは None。
+        問い合わせの記録。claude を起動できない・時間切れのときは、中身が空の記録。
     """
     cmd = [
         config.claude_bin,
@@ -96,6 +101,8 @@ def probe_quota(config: EvalConfig, cwd: Path) -> dict[str, Any] | None:
         "--model",
         PROBE_MODEL,
     ]
+    if config.skill_overrides:
+        cmd += ["--settings", json.dumps({"skillOverrides": config.skill_overrides})]
     try:
         proc = subprocess.run(
             cmd,
@@ -107,6 +114,5 @@ def probe_quota(config: EvalConfig, cwd: Path) -> dict[str, Any] | None:
             check=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        return None
-    lines = proc.stdout.decode("utf-8", errors="replace").splitlines()
-    return Transcript.from_lines(lines).quota()
+        return Transcript.from_lines([])
+    return Transcript.from_lines(proc.stdout.decode("utf-8", errors="replace").splitlines())

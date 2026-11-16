@@ -102,7 +102,7 @@ def test_execute_jobs_does_not_start_the_next_run_over_the_threshold() -> None:
         run,  # type: ignore[arg-type]
         lambda c, rep, res: done.append(rep),
         workers=1,
-        max_utilization=0.85,
+        should_stop=lambda res: stop_reason(res["quota"], 0.85),
     )
     assert started == [1, 2] and done == [1, 2]
     assert [rep for _, rep in not_started] == [3, 4]
@@ -116,7 +116,7 @@ def test_execute_jobs_runs_everything_under_the_threshold() -> None:
         lambda c, rep: {"quota": _quota(0.3)},
         lambda c, rep, res: None,
         workers=2,
-        max_utilization=0.85,
+        should_stop=lambda res: stop_reason(res["quota"], 0.85),
     )
     assert not_started == [] and reason is None
 

@@ -78,6 +78,9 @@ class EvalConfig:
         data_files: sandbox に読み取り専用でコピーするデータファイル。
         stub_files: sandbox 内の相対パス → 差し替える中身。ファイルは要るが中身を
             エージェントに見せたくないものに使う（どの条件でも同じように差し替える）。
+        skill_overrides: skill 名 → `off` など。settings の `skillOverrides` として渡し、
+            プロジェクトの外（アカウントやユーザーレベル）にある同名の skill をエージェントから
+            見えなくする。実行の入口が自動で埋めるので、cases.yaml には書かない。
     """
 
     claude_bin: str = "claude"
@@ -93,6 +96,7 @@ class EvalConfig:
     copy: list[str] = field(default_factory=list)
     data_files: list[str] = field(default_factory=list)
     stub_files: dict[str, str] = field(default_factory=dict)
+    skill_overrides: dict[str, str] = field(default_factory=dict)
 
 
 def _is_pattern(name: str) -> bool:

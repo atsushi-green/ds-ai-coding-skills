@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from skill_eval.cases import Case, reference_short_name
+from skill_eval.isolation import namespaced_copies, project_skill_names
 from skill_eval.transcript import Transcript
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".pdf"}
@@ -116,6 +117,8 @@ def evaluate(
         "timed_out": timed_out,
         "result_subtype": tx.result.get("subtype"),
         "available_skills": tx.available_skills,
+        # プロジェクトの外（アカウントなど）にある同名の skill が見えていたら、比較が成り立たない
+        "outside_skill_copies": namespaced_copies(tx.skill_names, project_skill_names(skills_dir)),
         "expected_skills": list(case.expect.skills),
         "expected_references": list(case.expect.references),
         "loaded_skills": loaded,

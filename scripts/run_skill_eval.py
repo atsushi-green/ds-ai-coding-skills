@@ -41,7 +41,8 @@ from skill_eval.cases import Case, EvalConfig, load_arms, load_suite
 from skill_eval.compare import write_compare
 from skill_eval.datasets import GENERATORS
 from skill_eval.evaluate import evaluate, read_reports
-from skill_eval.quota import format_quota, probe_quota, stop_reason
+from skill_eval.isolation import outside_copies, plan_overrides, project_skill_names
+from skill_eval.quota import format_quota, probe_session, stop_reason
 from skill_eval.report import write_report
 from skill_eval.sandbox import (
     build_sandbox,
@@ -198,16 +199,17 @@ def execute_jobs(
     run: Callable[[Case, int], dict],
     on_done: Callable[[Case, int, dict | Exception], None],
     workers: int,
-    max_utilization: float,
+    should_stop: Callable[[dict], str | None],
 ) -> tuple[list[Job], str | None]:
-    """実行を並列に進め、利用枠が上限に近づいたら残りを始めずに返す。
+    """実行を並列に進め、続けても無駄になると分かったら残りを始めずに返す。
 
     Args:
         jobs: （ケース, 反復番号）の一覧。
         run: 1 件を実行して result を返す関数。
         on_done: 1 件終わるたびに呼ぶ関数。失敗したときは例外を渡す。
         workers: 並列数。
-        max_utilization: 利用枠の使用率がこの値以上になったら、次の実行を始めない。
+        should_stop: 終わった実行の result を見て、残りを始めない理由を返す関数（続けるなら None）。
+            利用枠が上限に近い、プロジェクトの外の skill が見えていた、などに使う。
 
     Returns:
         始めなかった実行（jobs の順）と、止めた理由。最後まで実行したら空のリストと None。
@@ -219,7 +221,7 @@ def execute_jobs(
         if stop.is_set():
             return None
         result = run(case, rep)
-        reason = stop_reason(result.get("quota"), max_utilization)
+        reason = should_stop(result)
         if reason:
             # 結果を受け取る側で止めると、その前に次の 1 件が始まってしまう
             reasons.append(reason)
@@ -289,11 +291,59 @@ def check_same_condition(meta: dict, arm: Arm, config: EvalConfig, skills_hash: 
         raise SystemExit("前回と条件が違うので続きから実行できない（" + "、".join(diff) + "）")
 
 
+def preflight(config: EvalConfig, max_utilization: float) -> EvalConfig:
+    """実行を始める前に、利用枠の余裕と、プロジェクトの外にある同名の skill を確かめる。
+
+    空のディレクトリで短い問い合わせを 1 回送る。プロジェクトの外（アカウントやユーザーレベル）に
+    リポジトリの skill と同じ名前のものが見えていたら、見えなくする指定を config に足し、
+    見えなくなったことをもう 1 回の問い合わせで確かめる。
+
+    Args:
+        config: 起動条件。
+        max_utilization: 利用枠の使用率がこの値以上なら始めない（0 以下なら使用率では止めない）。
+
+    Returns:
+        同名の skill を見えなくする指定（`skill_overrides`）を足した config。
+
+    Raises:
+        SystemExit: 利用枠が目安以上、または同名の skill を見えなくできない場合。
+    """
+    project = project_skill_names(SKILLS_DIR)
+    with tempfile.TemporaryDirectory(prefix="skill-eval-probe-") as tmp:
+        tx = probe_session(config, Path(tmp))
+        print(f"利用枠: {format_quota(tx.quota())}")
+        reason = stop_reason(tx.quota(), max_utilization)
+        if reason:
+            raise SystemExit(f"実行を始めない — {reason}")
+        if not tx.init:
+            print("注意: 問い合わせの記録を読めず、プロジェクトの外の skill を確かめられなかった")
+            return config
+        outside = outside_copies(tx.skill_names, project)
+        if not outside:
+            return config
+        overrides, blocking = plan_overrides(outside)
+        if blocking:
+            raise SystemExit(
+                "実行を始めない — プロジェクトの外（~/.claude/skills など）に同名の skill があり、"
+                f"見えなくできない: {', '.join(blocking)}"
+            )
+        config = dataclasses.replace(config, skill_overrides=overrides)
+        left = outside_copies(probe_session(config, Path(tmp)).skill_names, project)
+        if left:
+            names = ", ".join(left)
+            raise SystemExit(
+                f"実行を始めない — プロジェクトの外の同名 skill を見えなくできなかった: {names}"
+            )
+    print(f"プロジェクトの外にある同名の skill {len(overrides)} 個を、見えなくして実行する:")
+    print("  " + ", ".join(sorted(overrides)))
+    return config
+
+
 def cmd_quota(args: argparse.Namespace) -> None:
     """利用枠（5 時間枠・7 日枠）の使用率を表示する。短い問い合わせを 1 回送る。"""
     config, _ = load_suite(args.cases, SKILLS_DIR)
     with tempfile.TemporaryDirectory(prefix="skill-eval-quota-") as tmp:
-        print(format_quota(probe_quota(config, Path(tmp))))
+        print(format_quota(probe_session(config, Path(tmp)).quota()))
 
 
 def cmd_list(args: argparse.Namespace) -> None:
@@ -362,14 +412,9 @@ def cmd_run(args: argparse.Namespace) -> None:
         print("残っている実行は無い")
         return
 
-    if args.max_utilization > 0:
-        # 上限の近くで始めると途中で打ち切られて無駄になるので、始める前に使用率を見る
-        with tempfile.TemporaryDirectory(prefix="skill-eval-quota-") as tmp:
-            quota = probe_quota(config, Path(tmp))
-        print(f"利用枠: {format_quota(quota)}")
-        reason = stop_reason(quota, args.max_utilization)
-        if reason:
-            raise SystemExit(f"実行を始めない — {reason}")
+    # 上限の近くで始めると途中で打ち切られ、外の skill が見えたままだと比較にならない。
+    # どちらも実行が無駄になるので、始める前に確かめる
+    config = preflight(config, args.max_utilization)
 
     job_names = [f"{c.id}/r{rep}" for c, rep in jobs]
     if resuming:
@@ -380,7 +425,11 @@ def cmd_run(args: argparse.Namespace) -> None:
                 print(f"やり直す実行の出力を退避: {moved}")
             shutil.rmtree(sandbox_root / f"{c.id}__r{rep}", ignore_errors=True)
         meta.setdefault("resumes", []).append(
-            {"at": datetime.now().isoformat(timespec="seconds"), "jobs": job_names}
+            {
+                "at": datetime.now().isoformat(timespec="seconds"),
+                "jobs": job_names,
+                "skill_overrides": sorted(config.skill_overrides),
+            }
         )
     else:
         run_dir.mkdir(parents=True, exist_ok=False)
@@ -420,11 +469,17 @@ def cmd_run(args: argparse.Namespace) -> None:
         # 途中経過も見られるよう、1 件終わるごとにレポートを更新する
         write_report(run_dir, selected, snapshot_dir)
 
-    not_started, reason = execute_jobs(jobs, run, on_done, args.jobs, args.max_utilization)
+    def should_stop(res: dict) -> str | None:
+        if res.get("outside_skill_copies"):
+            names = ", ".join(res["outside_skill_copies"])
+            return f"プロジェクトの外にある同名の skill が見えていた（比較にならない）: {names}"
+        return stop_reason(res.get("quota"), args.max_utilization)
+
+    not_started, reason = execute_jobs(jobs, run, on_done, args.jobs, should_stop)
     print(f"レポート: {run_dir / 'index.html'}")
     print(f"          {run_dir / 'summary.md'}")
     if not_started:
-        print(f"利用枠のため {len(not_started)} 件を始めなかった — {reason}")
+        print(f"{len(not_started)} 件を始めなかった — {reason}")
         for c, rep in not_started:
             print(f"  - {c.id} r{rep}")
         print(f"続きは、同じコマンドに --run-id {run_id} --resume を付けて実行する")
