@@ -34,6 +34,7 @@
 | RF / GBDT: 葉サイズの下限設定 | `min_samples_leaf` / `min_child_samples`（LightGBM 既定 20）の設定値を報告。RF は既定 1 で葉 n = 1 まで伸びる（平均で打ち消すので単独では異常ではない） | train / valid のギャップが大きいときに引き上げる |
 | permutation importance 上位 | ドメイン知識と整合 | 不整合（ID・日付連番・目的変数由来の列）ならリークを疑う |
 | seed 3〜5 本のスコア SD | 主張したい差より小さい | seed 固定のまま「差がある」と言わない |
+| カテゴリ変数の入れ方 | one-hot / native categorical / target encoding を明記 | target encoding は CV 内で（リーク） |
 
 取得例:
 
@@ -73,5 +74,4 @@ for n in (50, 100, 200, 400):  # warm_start なので木を足しながら OOB �
 - RF / GBDT の 1 本目の木を可視化して「モデルの判断ロジック」として説明しない。本数分の平均・加算がモデルなので 1 本は代表ではない。木の形で説明したいなら枝刈り済みの単一木を別に学習し、元モデルとの忠実度を出す（`model-interpretation.md` の代理モデル）
 - test データで early stopping しない。渡すのは validation（LightGBM は `eval_X` / `eval_y`。4.7 で `eval_set` は非推奨、打ち切りは `callbacks=[lgb.early_stopping(n)]`）。test は最後に 1 回。sklearn の HistGradientBoosting は `early_stopping="auto"`（n > 10,000 で自動 ON）が学習データから無作為に `validation_fraction=0.1` を切るため、グループ・時間構造があるとここがリーク源になる（`early_stopping=False` にして外で検証集合を作る）
 - ID・日付連番・目的変数と同時に生成される列が重要度上位に来たらリーク
-- target encoding は CV の fold ごとに学習側だけで作る。全データで作ると目的変数が特徴量に漏れる
 - 学習データ範囲外では予測が平坦になる。外挿の限界を報告に 1 行入れる
