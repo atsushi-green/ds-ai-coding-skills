@@ -98,7 +98,7 @@ dimensionality-reduction: # PCA（数値列の要約）。EFA・CFA・UMAP / t-S
     - {id: fig-parallel, kind: 図, label: スクリープロットに重ねた平行分析のランダム固有値, code: ['parallel.?analysis', '平行分析', '\bhorn\b']}
     - {id: fig-biplot, kind: 図, label: バイプロット（スコアの散布 + 負荷ベクトル）, code: ['biplot', 'バイプロット', 'quiver\(', '\.arrow\(', 'arrowprops']}
     - {id: val-parallel, kind: 値, label: 成分数の根拠（平行分析）, report: ['平行分析', 'parallel.?analysis']}
-    - {id: val-cumvar, kind: 値, label: 累積寄与率, report: ['累積寄与', '累積(説明)?分散', '累積.{0,6}(寄与|説明)', 'cumulative']}
+    - {id: val-cumvar, kind: 値, label: 累積寄与率, report: ['累積寄与', '累積(説明)?分散', '累積.{0,6}(寄与|説明)', 'cumulative', '寄与率\s*[（(]\s*累積', '(つ|成分|PC\s*\d|第\s*\d\s*主成分)\s*(だけ)?で.{0,16}\d+(\.\d+)?\s*[%％]']}
     - {id: val-standardize, kind: 値, label: 標準化の有無（相関行列か共分散行列か）, report: ['標準化', '相関行列', '共分散行列', 'StandardScaler', 'standardi[sz]', 'z.?スコア'], allow_negation: true}
 
 clustering: # k-means
