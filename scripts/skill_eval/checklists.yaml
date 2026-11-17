@@ -110,9 +110,11 @@ tree-model: # GBDT（SHAP のケースで採点）。単一木・RF に固有の
     - {id: val-train-valid, kind: 値, label: train / valid スコア, report: ['(train|学習(用)?データ|訓練)(?!(での?|の|における|内の?|内で)\s*(\d+\s*-?\s*(fold|分割)\s*)?(交差検証|CV|クロスバリデーション)).{0,30}((?<!交)差|ギャップ|gap)', '((?<!交)差|ギャップ).{0,12}train', 'train_val_gap', '学習\s*(と|・|／|/)\s*(検証|valid|テスト|test)(データ)?\s*(の|間の)?\s*(差|ギャップ)', '学習\s*(AUC|スコア|正解率|精度|損失|log.?loss|accuracy)\s*[\d.]+.{0,20}(検証|valid|テスト|test)']}
     - {id: val-best-iter, kind: 値, label: best_iteration と learning_rate, report_all: ['best.?iter|最良(の)?(反復|イテレーション|ラウンド)|最適(な)?(反復|イテレーション|ラウンド|木の(本)?数)|早期停止|early.?stopping|n_iter_|(止まった|停止した)(反復|ラウンド)|本数.{0,40}(最小|最良)(に|と)?(なる|だった|の)|\d+\s*(本|回|ラウンド|反復)(目)?で(止ま|停止|打ち切)', 'learning.?rate|学習率']}
     - {id: val-min-leaf, kind: 値, label: 葉サイズの下限設定, report: ['min_child_samples', 'min_samples_leaf', 'min_data_in_leaf', 'min_child_weight', '葉.{0,8}(最小|下限)', '(最小|下限).{0,8}葉'], allow_negation: true}
-    - {id: val-pi-top, kind: 値, label: permutation importance の上位, report: ['permutation', '(並べ替え|置換|順列|シャッフル)(による|の)?(特徴量)?重要度']}
+    # 「運賃だけを入れ替える重要度テスト」「SHAP と入れ替えテストの順位一致」のように、入れ替えと言い換えたものも数える
+    - {id: val-pi-top, kind: 値, label: permutation importance の上位, report: ['permutation', '(並べ替え|置換|順列|シャッフル)(による|の)?(特徴量)?重要度', '入れ替え(る|た|による|の)?.{0,10}(重要度|テスト)']}
     - {id: val-seed-sd, kind: 値, label: seed 3〜5 本のスコア SD, report: ['(seed|シード).{0,40}(SD|標準偏差|ばらつき|±|幅)', '(SD|標準偏差|ばらつき|±).{0,40}(seed|シード)']}
-    - {id: val-cat-encoding, kind: 値, label: カテゴリ変数の入れ方, report: ['one.?hot', 'ワンホット', 'ダミー(変数|化|列)', '(の|を)\s*ダミー(?!\s*(分類|モデル|予測|ベースライン))', 'categorical_feature', 'カテゴリ(変数|型|特徴量)?として', '(ネイティブ|native).{0,6}(カテゴリ|categor)', 'target.?encod', 'ターゲット.?エンコ', 'label.?encod', 'ラベル.?エンコ', '(0\s*/\s*1|0・1|二値|数値|整数)(に|へ)(変換|符号化|置き換え|エンコード)', '整数(の)?(番号|コード|値)', '(女性|男性|female|male)\s*[=＝]\s*1'], allow_negation: true}
+    # 「S/C/Q を 0/1/2 に順序コード化」「C/Q/S をカテゴリ特徴として使用」も数える
+    - {id: val-cat-encoding, kind: 値, label: カテゴリ変数の入れ方, report: ['one.?hot', 'ワンホット', 'ダミー(変数|化|列)', '(の|を)\s*ダミー(?!\s*(分類|モデル|予測|ベースライン))', 'categorical_feature', 'カテゴリ(変数|型|特徴量?)?として', '\d(\s*/\s*\d)+\s*(に|へ)\s*(順序)?(コード|符号|変換|置き換え|エンコード)', '順序(コード|エンコード|符号)', '(ネイティブ|native).{0,6}(カテゴリ|categor)', 'target.?encod', 'ターゲット.?エンコ', 'label.?encod', 'ラベル.?エンコ', '(0\s*/\s*1|0・1|二値|数値|整数)(に|へ)(変換|符号化|置き換え|エンコード)', '整数(の)?(番号|コード|値)', '(女性|男性|female|male)\s*[=＝]\s*1'], allow_negation: true}
 
 model-interpretation: # SHAP（木系）。permutation importance の図は tree-model の側で採点する。PDP / ICE・ALE・代理モデルの行と、条件つきの行（図に描いた特徴数、手法間の順位一致）は入れていない
   items:
