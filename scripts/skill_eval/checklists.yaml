@@ -67,7 +67,7 @@ time-series: # モデルを当てはめて予測する場合。ARIMA・VAR・変
 # 削ったあとも出ているかを見るために、採点表には残している
 ml-evaluation: # 分類
   items:
-    - {id: fig-learning-curve, kind: 図, label: 過学習を見る曲線（学習曲線）, code: ['learning_curve\(', 'LearningCurveDisplay', 'staged_predict', 'evals_result', 'validation_score_']}
+    - {id: fig-learning-curve, kind: 図, label: 過学習を見る曲線（学習曲線）, code: ['learning_curve\(', 'LearningCurveDisplay', 'staged_predict', 'evals_result', 'record_evaluation\(', 'train_score_', 'validation_score_', 'plot_metric\(']}
     - {id: fig-baseline, kind: 図, label: ベースラインとの比較（幅つき）, code_all: ['Dummy(Classifier|Regressor)', 'boxplot\(|violinplot\(|errorbar\(']}
     - {id: fig-confusion, kind: 図, label: 混同行列, code: ['confusion_matrix\(', 'ConfusionMatrixDisplay']}
     - {id: fig-roc-pr, kind: 図, label: PR 曲線・ROC 曲線, code_all: ['roc_curve\(|RocCurveDisplay', 'precision_recall_curve\(|PrecisionRecallDisplay']}
