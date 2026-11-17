@@ -92,6 +92,15 @@ missing-data: # 欠測の代入（欠測のある列が 2 つ以上）。外れ�
     - {id: val-method-n, kind: 値, label: 採用した処理と失う n, report: ['リストワイズ', '多重代入', 'MICE', '(中央値|最頻値|平均値|回帰|モデル).{0,16}(代入|補完|埋め)', '(代入|補完|埋め).{0,16}(中央値|最頻値|平均値)']}
     - {id: val-oplog, kind: 値, label: 除外・変換・代入の操作ログ（件数付き）, report: ['\d[\d,]*\s*(件|行|人|個).{0,80}(代入|補完|埋め|除[外いきく]|削除|置き換え)', '(代入|補完|埋め|除[外いきく]|削除).{0,24}\d[\d,]*\s*(件|行|人|個)', '\d[\d,]*\s*[（(]\s*\d+(\.\d+)?\s*[%％]\s*[）)].{0,80}(代入|補完|埋め|置き換え)']}
 
+dimensionality-reduction: # PCA（数値列の要約）。EFA・CFA・UMAP / t-SNE の行は入れていない
+  items:
+    - {id: fig-scree, kind: 図, label: スクリープロット, code: ['scree', 'スクリー', '(\.plot|\.bar|\.step)\([^)]{0,200}explained_variance']}
+    - {id: fig-parallel, kind: 図, label: スクリープロットに重ねた平行分析のランダム固有値, code: ['parallel.?analysis', '平行分析', '\bhorn\b']}
+    - {id: fig-biplot, kind: 図, label: バイプロット（スコアの散布 + 負荷ベクトル）, code: ['biplot', 'バイプロット', 'quiver\(', '\.arrow\(', 'arrowprops']}
+    - {id: val-parallel, kind: 値, label: 成分数の根拠（平行分析）, report: ['平行分析', 'parallel.?analysis']}
+    - {id: val-cumvar, kind: 値, label: 累積寄与率, report: ['累積寄与', '累積(説明)?分散', '累積.{0,6}(寄与|説明)', 'cumulative']}
+    - {id: val-standardize, kind: 値, label: 標準化の有無（相関行列か共分散行列か）, report: ['標準化', '相関行列', '共分散行列', 'StandardScaler', 'standardi[sz]', 'z.?スコア'], allow_negation: true}
+
 clustering: # k-means
   items:
     - {id: fig-silhouette-plot, kind: 図, label: シルエットプロット（サンプル別）, code: ['silhouette_samples\(']}
