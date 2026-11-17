@@ -34,7 +34,8 @@ ols: # OLS（順序のない横断データ、n < 5000）。Durbin-Watson（行�
     - {id: fig-resid-fitted, kind: 図, label: 残差 vs 予測値, code: ['residplot\(', '(scatter|plot|regplot)\([^)\n]{0,80}(fitted|y_?hat|pred)\w*\s*,[^)\n]{0,80}resid', 'set_title\([^)\n]{0,60}(残差\s*(vs\.?|対|と)\s*(予測|fitted|当てはめ)|resid\w*\s*vs\.?\s*fitted)']}
     - {id: fig-qq, kind: 図, label: Q-Q プロット, code: ['probplot\(', 'qqplot\(', 'ProbPlot\(']}
     - {id: fig-scale-location, kind: 図, label: Scale-Location（√|標準化残差| vs 予測値）, code: ['sqrt\(\s*(np\.)?abs\(', 'scale.?location']}
-    - {id: fig-leverage, kind: 図, label: レバレッジ vs 標準化残差（点サイズ = Cook's D）, code: ['hat_matrix_diag', 'influence_plot\(', 'plot_leverage_resid2\(']}
+    # てこ比を自前で計算して描いたもの（scatter(r.leverage, std_resid)）も数える。HC3 の計算にだけ使った leverage は数えない
+    - {id: fig-leverage, kind: 図, label: レバレッジ vs 標準化残差（点サイズ = Cook's D）, code: ['hat_matrix_diag', 'influence_plot\(', 'plot_leverage_resid2\(', 'scatter\([^)\n]{0,40}(leverage|\bh_?ii\b)', 'set_title\([^)\n]{0,60}(てこ比|レバレッジ|leverage)']}
     - {id: val-bp, kind: 値, label: Breusch-Pagan p, report: ['Breusch', 'ブルーシュ', '\bBP\s*(検定|p|の)', '\bWhite\b.{0,8}(検定|test)', '(不均一|等)分散.{0,12}(検定|p\s*[=＝<>値])']}
     - {id: val-vif, kind: 値, label: VIF の最大値, report: ['VIF', '分散拡大']}
     - {id: val-cooks, kind: 値, label: Cook's D > 4/n の件数, report: ['Cook', 'クック', '4\s*/\s*n']}
