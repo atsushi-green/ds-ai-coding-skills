@@ -101,6 +101,27 @@ dimensionality-reduction: # PCA（数値列の要約）。EFA・CFA・UMAP / t-S
     - {id: val-cumvar, kind: 値, label: 累積寄与率, report: ['累積寄与', '累積(説明)?分散', '累積.{0,6}(寄与|説明)', 'cumulative', '寄与率\s*[（(]\s*累積', '(つ|成分|PC\s*\d|第\s*\d\s*主成分)\s*(だけ)?で.{0,16}\d+(\.\d+)?\s*[%％]']}
     - {id: val-standardize, kind: 値, label: 標準化の有無（相関行列か共分散行列か）, report: ['標準化', '相関行列', '共分散行列', 'StandardScaler', 'standardi[sz]', 'z.?スコア'], allow_negation: true}
 
+tree-model: # GBDT（SHAP のケースで採点）。単一木・RF に固有の行（dtreeviz・枝刈り・OOB・最小葉）は入れていない
+  items:
+    - {id: fig-gbdt-curve, kind: 図, label: train / valid loss vs iteration, code: ['evals_result', 'record_evaluation\(', 'staged_(predict|decision)', 'train_score_', 'validation_score_', 'plot_metric\(']}
+    - {id: fig-pi, kind: 図, label: permutation importance の棒 + エラーバー, code_all: ['permutation_importance\(', 'xerr|yerr|errorbar\(|importances_std|boxplot\(']}
+    - {id: val-train-valid, kind: 値, label: train / valid スコア, report: ['(train|学習(用)?データ|訓練).{0,30}((?<!交)差|ギャップ|gap)', '((?<!交)差|ギャップ).{0,12}train', 'train_val_gap']}
+    - {id: val-best-iter, kind: 値, label: best_iteration と learning_rate, report_all: ['best.?iter|最良(の)?(反復|イテレーション|ラウンド)|最適(な)?(反復|イテレーション|ラウンド|木の(本)?数)|早期停止|early.?stopping|n_iter_|(止まった|停止した)(反復|ラウンド)', 'learning.?rate|学習率']}
+    - {id: val-min-leaf, kind: 値, label: 葉サイズの下限設定, report: ['min_child_samples', 'min_samples_leaf', 'min_data_in_leaf', 'min_child_weight', '葉.{0,8}(最小|下限)', '(最小|下限).{0,8}葉']}
+    - {id: val-pi-top, kind: 値, label: permutation importance の上位, report: ['permutation', '(並べ替え|置換|順列|シャッフル)(による|の)?(特徴量)?重要度']}
+    - {id: val-seed-sd, kind: 値, label: seed 3〜5 本のスコア SD, report: ['(seed|シード).{0,40}(SD|標準偏差|ばらつき|±|幅)', '(SD|標準偏差|ばらつき|±).{0,40}(seed|シード)']}
+    - {id: val-cat-encoding, kind: 値, label: カテゴリ変数の入れ方, report: ['one.?hot', 'ワンホット', 'ダミー(変数|化)', 'categorical_feature', 'カテゴリ(変数|型|特徴量)?として', 'target.?encod', 'ターゲット.?エンコ', 'label.?encod', 'ラベル.?エンコ', '(0\s*/\s*1|0・1|二値|数値|整数)(に|へ)(変換|符号化|置き換え|エンコード)'], allow_negation: true}
+
+model-interpretation: # SHAP（木系）。permutation importance の図は tree-model の側で採点する。PDP / ICE・ALE・代理モデルの行と、条件つきの行（図に描いた特徴数、手法間の順位一致）は入れていない
+  items:
+    - {id: fig-corr, kind: 図, label: 特徴量間相関ヒートマップ, code_all: ['\.corr\(|corrcoef\(', 'heatmap\(|imshow\(|matshow\(|pcolormesh\(']}
+    - {id: fig-beeswarm, kind: 図, label: SHAP summary（beeswarm）, code: ['beeswarm', 'summary_plot\(']}
+    - {id: fig-shap-bar, kind: 図, label: SHAP bar, code: ['plots\.bar\(', 'plot_type\s*=\s*.bar', 'shap.{0,120}\.barh?\(']}
+    - {id: val-not-causal, kind: 値, label: 「解釈 ≠ 因果」の 1 文, report: ['因果', 'causal'], allow_negation: true}
+    - {id: val-corr-pairs, kind: 値, label: '相関 |r| > 0.8 のペア', report: ['\|\s*r\s*\|\s*[>＞≥]', '相関.{0,24}0\.8', '0\.8.{0,24}相関', '多重共線', '(強い|高い)相関', '相関が(強|高)'], allow_negation: true}
+    - {id: val-rank-stability, kind: 値, label: 重要度順位の安定性（fold 間の Spearman ρ）, report: ['(fold|フォールド|分割)(間|ごと).{0,40}(spearman|スピアマン|ρ|順位)', '(spearman|スピアマン|ρ|順位相関).{0,40}(fold|フォールド|分割)', '順位(の)?安定', 'rank.?stab']}
+    - {id: val-additivity, kind: 値, label: SHAP の加法性の検算, report: ['加法性', 'additiv', 'base.?value', '(SHAP|shap)\s*(値)?\s*の\s*(合計|和|総和)', 'Σ\s*SHAP', '期待値\s*[+＋]']}
+
 clustering: # k-means
   items:
     - {id: fig-silhouette-plot, kind: 図, label: シルエットプロット（サンプル別）, code: ['silhouette_samples\(']}
