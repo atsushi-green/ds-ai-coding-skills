@@ -68,12 +68,13 @@ time-series: # モデルを当てはめて予測する場合。ARIMA・VAR・変
 ml-evaluation: # 分類
   items:
     - {id: fig-learning-curve, kind: 図, label: 過学習を見る曲線（学習曲線）, code: ['learning_curve\(', 'LearningCurveDisplay', 'staged_predict', 'evals_result', 'record_evaluation\(', 'train_score_', 'validation_score_', 'plot_metric\(']}
-    - {id: fig-baseline, kind: 図, label: ベースラインとの比較（幅つき）, code_all: ['Dummy(Classifier|Regressor)', 'boxplot\(|violinplot\(|errorbar\(']}
+    # Dummy は、陽性率を一律に予測する定数（np.full(n, y.mean())）を自前で作ったものも数える
+    - {id: fig-baseline, kind: 図, label: ベースラインとの比較（幅つき）, code_all: ['Dummy(Classifier|Regressor)|np\.full\([^\n]{0,80}(\.mean\(|prior|base_rate)', 'boxplot\(|violinplot\(|errorbar\(']}
     - {id: fig-confusion, kind: 図, label: 混同行列, code: ['confusion_matrix\(', 'ConfusionMatrixDisplay']}
     - {id: fig-roc-pr, kind: 図, label: PR 曲線・ROC 曲線, code_all: ['roc_curve\(|RocCurveDisplay', 'precision_recall_curve\(|PrecisionRecallDisplay']}
     - {id: val-pipeline, kind: 値, label: 前処理が Pipeline の中にあるか, code: ['Pipeline\(', 'make_pipeline\('], report: ['前処理.{0,14}(リーク|Pipeline|パイプライン)', '学習する前処理(は)?(なし|無し|ない)']}
     - {id: val-split, kind: 値, label: 分割方法, code: ['stratify\s*=', 'Stratified\w*KFold', 'GroupKFold', 'TimeSeriesSplit']}
-    - {id: val-score-vs-baseline, kind: 値, label: 汎化スコアと幅（ベースラインとの比較）, code_all: ['Dummy(Classifier|Regressor)', 'cross_val|KFold|bootstrap|resample']}
+    - {id: val-score-vs-baseline, kind: 値, label: 汎化スコアと幅（ベースラインとの比較）, code_all: ['Dummy(Classifier|Regressor)|np\.full\([^\n]{0,80}(\.mean\(|prior|base_rate)', 'cross_val|KFold|bootstrap|resample']}
     # 「学習データでの交差検証 AUC は 0.886 で、テストとの差があります」は検証どうしの比較なので数えない
     - {id: val-train-val-gap, kind: 値, label: train と validation のスコアの差, report: ['(train|学習(用)?データ|訓練)(?!(での?|の|における|内の?|内で)\s*(\d+\s*-?\s*(fold|分割)\s*)?(交差検証|CV|クロスバリデーション)).{0,30}((?<!交)差|ギャップ|gap)', '((?<!交)差|ギャップ).{0,12}train', 'train_val_gap', '学習\s*(と|・|／|/)\s*(検証|valid|テスト|test)(データ)?\s*(の|間の)?\s*(差|ギャップ)', '学習\s*(AUC|スコア|正解率|精度|損失|log.?loss|accuracy)\s*[\d.]+.{0,20}(検証|valid|テスト|test)']}
     - {id: val-test-once, kind: 値, label: テストデータでの評価回数, report: ['(テスト|test|ホールドアウト|最終評価|最後の確認|評価用|検証データ).{0,30}(1\s*回|一度)', '(1\s*回|一度)(だけ|のみ).{0,12}(評価|テスト)']}
@@ -123,7 +124,8 @@ model-interpretation: # SHAP（木系）。permutation importance の図は tree
     - {id: val-not-causal, kind: 値, label: 「解釈 ≠ 因果」の 1 文, report: ['因果', 'causal'], allow_negation: true}
     - {id: val-corr-pairs, kind: 値, label: '相関 |r| > 0.8 のペア', report: ['\|\s*r\s*\|\s*[>＞≥]', '相関.{0,24}0\.8', '0\.8.{0,24}相関', '多重共線', '(強い|高い)相関', '相関(が|の)(強|高)', '(互いに|同士で?)相関', '相関(した|している)(特徴|変数)', '(ほぼ|大部分が?)同じ情報', '(寄与|重要度).{0,12}(分け合|分散して|分散する|分散し、|割れ)'], allow_negation: true}
     - {id: val-rank-stability, kind: 値, label: 重要度順位の安定性（fold 間の Spearman ρ）, report: ['(fold|フォールド|分割)\s*(間|ごと).{0,40}(spearman|スピアマン|ρ|順位)', '(spearman|スピアマン|ρ|順位相関).{0,40}(fold|フォールド|分割)', '(各|それぞれの)\s*(fold|フォールド|分割).{0,40}順位', '順位.{0,16}安定', 'rank.?stab']}
-    - {id: val-additivity, kind: 値, label: SHAP の加法性の検算, report: ['加法性', 'additiv', 'base.?value', '(SHAP|shap)\s*(値)?\s*の\s*(合計|和|総和)', 'Σ\s*SHAP', '期待値\s*[+＋]']}
+    # 「base value は −0.603」のように基準値を書いただけの報告は、検算ではないので数えない
+    - {id: val-additivity, kind: 値, label: SHAP の加法性の検算, report: ['加法性', 'additiv', '(base.?value|基準値|期待値)\s*[+＋]', '(SHAP|shap)\s*(値)?\s*の\s*(合計|和|総和)', 'Σ\s*SHAP']}
 
 clustering: # k-means
   items:
