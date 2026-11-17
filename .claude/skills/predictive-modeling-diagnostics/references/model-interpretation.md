@@ -39,6 +39,7 @@
 | 共通 | 相関 \|r\| > 0.8 のペア | 列挙され、重要度の分散が注記されている | グループ permutation（相関ペアを同時に置換）で再計算 |
 | 共通 | 重要度順位の安定性（fold 間の Spearman ρ の最小値。使った手法の重要度で計算し、SHAP なら fold ごとの平均 \|SHAP\| を使う） | ρ > 0.7 | 「上位 k 個の集合」として報告し、順位を主張しない |
 | permutation importance | `scoring` | 運用で使う指標を明示する（順位で使うなら `roc_auc` / `average_precision`、閾値を決めて使うなら `f1` / `recall` / `precision`、回帰は `neg_root_mean_squared_error` など）。報告にも指標名を書く | `scoring` を省くと推定器の `score()`（分類器 = accuracy、回帰 = R²）が使われる。不均衡データの accuracy は少数派を全部外しても下がらず、重要度が 0 付近に潰れて順位が読めない。指標が変われば順位も変わるので、指標名のない重要度は解釈しない |
+| SHAP | 加法性の検算（数件） | `base_value + Σshap ≒ 予測値`（差 < 1e-6 目安） | 分類器の `TreeExplainer` は既定が対数オッズ（`model_output="raw"`）なので `predict_proba` と比べない。対数オッズのまま検算して報告に明記するか、確率で解釈したいなら `model_output="probability"` に切り替える |
 | 2 手法以上を使ったとき | 手法間の順位一致（例: PI 平均と平均 \|SHAP\| の Spearman ρ） | 上位の顔ぶれが一致する | 食い違う特徴を列挙し、相関ペアかどうかを確認する |
 | 代理モデル | 忠実度 | 元モデルとの R² / accuracy を報告 | 低ければ代理モデルの説明を使わない |
 
