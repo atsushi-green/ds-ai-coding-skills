@@ -38,23 +38,7 @@
 | 正則化 | 標準化残差の絶対値が大きい上位件数 | 該当行の実データを表示 | 判定 = 確認。除外は人間判断 |
 | 分位点回帰 | 予測分位点の交差（高い分位点の予測が低い分位点を下回る行の割合） | 0 目安 | 分位点の数を減らすかモデルを単純化する。交差したまま分位点ごとの予測を使わない |
 
-取得例（`X` は説明変数の polars DataFrame、`y` は目的変数）。OLS:
-
-```python
-import statsmodels.api as sm
-from statsmodels.stats.diagnostic import het_breuschpagan
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-from statsmodels.stats.stattools import durbin_watson
-
-Xc = sm.add_constant(X.to_pandas())  # statsmodels には変数名付きの pandas で渡す。回帰も VIF も定数項込みで
-res = sm.OLS(y, Xc).fit()
-bp_p = het_breuschpagan(res.resid, res.model.exog)[1]
-vif_max = max(variance_inflation_factor(Xc.to_numpy(), i) for i in range(1, Xc.shape[1]))
-cooks_n = int((res.get_influence().cooks_distance[0] > 4 / res.nobs).sum())
-dw = durbin_watson(res.resid)  # 行に時間・空間の順序があるときだけ
-```
-
-分位点回帰（`df_pd` は目的変数 `y` と説明変数を持つ pandas）:
+取得例（分位点回帰。`df_pd` は目的変数 `y` と説明変数を持つ pandas）:
 
 ```python
 import numpy as np
@@ -69,7 +53,7 @@ crossing_rate = float((np.diff(pred, axis=1) < 0).any(axis=1).mean())  # 予測�
 
 ## 落とし穴
 
-- VIF は定数項込みのデザイン行列で計算する。素の X を渡すと過大評価になる
+- 回帰も VIF も定数項込みのデザイン行列で計算する（`sm.OLS` には `sm.add_constant` で定数項を足す。`smf.ols` は自動で入る）。素の X で VIF を計算すると過大評価になる
   ```python
   # NG: 定数項なしの X で VIF → 値が過大になる
   vif = [variance_inflation_factor(X.to_numpy(), i) for i in range(X.shape[1])]
