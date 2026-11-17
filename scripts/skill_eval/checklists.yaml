@@ -27,6 +27,19 @@ glm: # 二値の目的変数
     - {id: val-brier, kind: 値, label: Brier score, report: ['Brier']}
     - {id: val-binned-out, kind: 値, label: binned residual のバンド外ビン数, report: ['帯外', 'バンド外', 'binned_out']}
 
+# 残差 4 点セットは、パネルごとに合格の読み方が違うので 4 項目に分けた。残差の正規性は Shapiro-Wilk 以外の
+# 検定（Jarque-Bera など）で報告したものも数える
+ols: # OLS（順序のない横断データ、n < 5000）。Durbin-Watson（行に順序があるときだけ）と、正則化・分位点回帰の行は入れていない
+  items:
+    - {id: fig-resid-fitted, kind: 図, label: 残差 vs 予測値, code: ['residplot\(', '(scatter|plot|regplot)\([^)\n]{0,80}(fitted|y_?hat|pred)\w*\s*,[^)\n]{0,80}resid', 'set_title\([^)\n]{0,60}(残差\s*(vs\.?|対|と)\s*(予測|fitted|当てはめ)|resid\w*\s*vs\.?\s*fitted)']}
+    - {id: fig-qq, kind: 図, label: Q-Q プロット, code: ['probplot\(', 'qqplot\(', 'ProbPlot\(']}
+    - {id: fig-scale-location, kind: 図, label: Scale-Location（√|標準化残差| vs 予測値）, code: ['sqrt\(\s*(np\.)?abs\(', 'scale.?location']}
+    - {id: fig-leverage, kind: 図, label: レバレッジ vs 標準化残差（点サイズ = Cook's D）, code: ['hat_matrix_diag', 'influence_plot\(', 'plot_leverage_resid2\(']}
+    - {id: val-bp, kind: 値, label: Breusch-Pagan p, report: ['Breusch', 'ブルーシュ', '\bBP\s*(検定|p|の)', '\bWhite\b.{0,8}(検定|test)', '(不均一|等)分散.{0,12}(検定|p\s*[=＝<>値])']}
+    - {id: val-vif, kind: 値, label: VIF の最大値, report: ['VIF', '分散拡大']}
+    - {id: val-cooks, kind: 値, label: Cook's D > 4/n の件数, report: ['Cook', 'クック', '4\s*/\s*n']}
+    - {id: val-shapiro, kind: 値, label: 残差の正規性の検定（Shapiro-Wilk p）, report: ['Shapiro', 'シャピロ', 'Jarque', 'ジャック.?ベラ', 'Omnibus', 'オムニバス', 'Anderson', '正規性.{0,12}(検定|p\s*[=＝<>値])']}
+
 survival: # KM + Cox（カテゴリ共変量あり）。ログランク・AFT・RMST・競合リスクの行は入れていない
   items:
     - {id: fig-km, kind: 図, label: KM 曲線, code: ['KaplanMeierFitter\(', 'kaplan_meier_estimator\(']}
