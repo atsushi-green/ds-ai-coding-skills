@@ -16,7 +16,8 @@ glm: # 二値の目的変数
   items:
     - {id: fig-roc, kind: 図, label: ROC 曲線, code: ['roc_curve\(', 'RocCurveDisplay']}
     - {id: fig-pr, kind: 図, label: PR 曲線, code: ['precision_recall_curve\(', 'PrecisionRecallDisplay']}
-    - {id: fig-calibration, kind: 図, label: キャリブレーションプロット, code: ['calibration_curve\(', 'CalibrationDisplay']}
+    # calibration_curve を使わず、十分位やセルで自前に描いたもの（タイトルで見る）も数える
+    - {id: fig-calibration, kind: 図, label: キャリブレーションプロット, code: ['calibration_curve\(', 'CalibrationDisplay', 'set_title\([^)]{0,60}(キャリブレーション|calibration|較正)']}
     - {id: fig-binned-residual, kind: 図, label: binned residual plot, code: ['binned', 'bin\w*.{0,20}resid', 'resid\w*.{0,20}bin']}
     - {id: val-se, kind: 値, label: 係数の SE（完全分離の確認）, report: ['完全分離', 'SE.{0,6}(最大|max)', 'SE_max']}
     - {id: val-vif, kind: 値, label: VIF の最大値, report: ['VIF']}
@@ -50,7 +51,9 @@ mixed-effects: # 二値の目的変数のランダム切片モデル（チケッ
     - {id: fig-blup-qq, kind: 図, label: ランダム効果（BLUP）の Q-Q, code: ['(probplot|qqplot|ProbPlot)\([^)\n]{0,60}(random_eff|blup|ranef|conditional_mode|\b[bu]_hat|\bre_\w*|\bre\b|_re\b|mode)', 'set_title\([^)]{0,80}(ランダム効果|ランダム切片|BLUP|random.?effect)[^)]{0,40}(Q-?Q|分位)', 'set_title\([^)]{0,80}Q-?Q[^)]{0,40}(ランダム効果|ランダム切片|BLUP|random.?effect)']}
     - {id: val-n-groups, kind: 値, label: 群数, report: ['(群|グループ|チケット)(の)?数[^。\n]{0,10}\d', '\d[\d,]*\s*(群|グループ|個のチケット|種類のチケット|チケット)', 'n_groups']}
     - {id: val-obs-per-group, kind: 値, label: 群あたりの観測数（1 件のみの群の割合）, report: ['(1\s*人|1\s*件|1\s*名|一人|単独)(だけ)?の(群|グループ|チケット)', '(群|グループ|チケット)(あたり|ごと)の(人数|観測数|件数|サイズ)', 'singleton']}
-    - {id: val-coef-vs-pooled, kind: 値, label: 係数 + 95% CI を群構造を無視したモデルと並置, report: ['(群|グループ)(構造)?を無視', '(通常|普通|単純|プール)(の|した)?ロジスティック', 'pooled']}
+    # 「群構造を無視すると SE が過小になる」のような一般論や、尤度比検定のためだけの当てはめは数えない。
+    # 群構造を無視したモデルの係数（OR）を並べたもの（表の列名・CSV の列を含む）を数える
+    - {id: val-coef-vs-pooled, kind: 値, label: 係数 + 95% CI を群構造を無視したモデルと並置, report: ['((群|グループ)(構造|効果)?を無視|(通常|普通|単純|プール)(の|した)?ロジスティック(回帰)?|ランダム効果なしの\s*GLM|母集団平均の?\s*OR|pooled)[^。\n]{0,60}(\bOR\b|オッズ比|信頼区間|\bCI\b|\|)', '(\bOR\b|オッズ比|係数)[^。\n]{0,40}((通常|普通|単純|プール)(の|した)?ロジスティック|群(構造)?を無視)', '\bOR_glm', '\bGLM\b[^。\n]{0,12}(\bOR\b|オッズ比)']}
     - {id: val-fe-re, kind: 値, label: 固定効果と変量効果のどちらを選んだかと理由, report: ['固定効果[^。\n]{0,60}(変量|ランダム)効果', '(変量|ランダム)効果[^。\n]{0,60}固定効果', 'Mundlak', 'Hausman', 'ハウスマン']}
     - {id: val-icc, kind: 値, label: ICC, report: ['ICC', '級内相関', 'グループ内相関', '群内相関']}
     - {id: val-converged, kind: 値, label: 収束フラグ, report: ['収束', 'converge'], allow_negation: true}
