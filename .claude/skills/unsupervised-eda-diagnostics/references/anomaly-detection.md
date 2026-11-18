@@ -25,42 +25,13 @@
 
 | 項目 | 合格基準 | 違反時の対処 |
 |---|---|---|
-| 単純ベースライン（z スコア / IQR / Mahalanobis）との比較 | 複雑手法が勝つ根拠がある | 根拠がなければ単純法を採用（説明しやすい） |
+| 単純ベースライン（z スコア / IQR / Mahalanobis）との比較（z スコアは各行の \|z\| の最大で順位をつける） | 複雑手法が勝つ根拠がある | 根拠がなければ単純法を採用（説明しやすい） |
 | 検知件数（contamination）の根拠 | ドメイン知識・過去ラベル・業務の確認能力のどれかを明記 | 根拠がなければ業務の確認能力から逆算し、そう明記する |
 | 閾値の根拠 | 分布の切れ目か業務要件（確認可能な件数） | — |
 | ラベルあり: precision@k、再現率、PR-AUC | 業務の確認能力（1 日に見られる件数）に対する k で | — |
-| seed・ハイパラ間の上位 k 件の Jaccard（組合せの最小値） | > 0.5 目安 | 特徴量・ハイパラの見直し（不安定な上位は使えない） |
+| seed・ハイパラ間の上位 k 件の Jaccard（組合せの最小値。例: seed 3 本 × `max_samples` 128 / 256 の 6 通り） | > 0.5 目安 | 特徴量・ハイパラの見直し（不安定な上位は使えない） |
 | スケーリング | 距離ベース（LOF / OCSVM / Mahalanobis）なら方針を明記。異常を含むデータで fit する平均・SD は異常自身に引っ張られる | `RobustScaler`（median / IQR）か log。木ベース（IsolationForest）は特徴ごとの線形変換にほぼ不変なので標準化は不要 |
 | 上位 k 件の説明（各特徴の z スコア） | 全件に付いている | — |
-
-取得例（`X` は数値列だけの polars DataFrame）:
-
-```python
-import itertools
-import numpy as np
-import polars as pl
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
-
-
-def jaccard(a: set, b: set) -> float:
-    return len(a & b) / len(a | b)
-
-
-Xs = StandardScaler().fit_transform(X.to_numpy())  # scikit-learn には配列で渡す
-rate = 0.02  # 検知率。業務の確認能力などから決め、根拠を報告に書く
-k = int(rate * X.height)
-score = -IsolationForest(contamination=rate, random_state=0).fit(Xs).score_samples(Xs)  # 大きいほど異常
-top_if = set(np.argsort(-score)[:k])
-top_z = set(np.argsort(-np.abs(Xs).max(axis=1))[:k])  # 単純ベースライン（標準化済みなので |z| の最大）
-j_base = jaccard(top_if, top_z)  # 単純法との一致度
-tops = [set(np.argsort(IsolationForest(max_samples=m, random_state=s).fit(Xs).score_samples(Xs))[:k])
-        for s in range(3) for m in (128, 256)]  # score_samples は小さいほど異常
-j_setting = min(jaccard(a, b) for a, b in itertools.combinations(tops, 2))  # 設定間の一致（> 0.5 目安）
-idx = sorted(top_if)  # 説明付き（元の値 + 各特徴の z スコア）
-top_table = X.select(pl.all().gather(idx)).with_columns(
-    [pl.Series(f"z_{c}", Xs[idx, i].round(1)) for i, c in enumerate(X.columns)])
-```
 
 ## 落とし穴
 
