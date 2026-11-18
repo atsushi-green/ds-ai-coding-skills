@@ -272,8 +272,10 @@ optimization: # 純粋な LP（3 変数・3 制約、実行可能）。MIP / CP 
     - {id: fig-tornado, kind: 図, label: 感度分析の tornado 図, code: ['tornado', 'トルネード', 'set_title\([^)\n]{0,80}(感度|sensitivity)']}
     - {id: val-status, kind: 値, label: ソルバーの status, report: ['status', 'ステータス', '\bOptimal\b']}
     - {id: val-time, kind: 値, label: 求解時間, report: ['求解時間', '計算時間', '実行時間', '(求解|計算|解く).{0,8}\d+(\.\d+)?\s*(秒|ms|sec)', 'solve.?time', 'runtime']}
-    - {id: val-verify, kind: 値, label: 制約違反の最大値と目的値の再計算差, report: ['違反', '再計算', '代入して', '独立(に|して)?(再)?検証', 'violation']}
+    # ソルバーを使わず手で解いた報告の「材料は 2·40 + 20 = 100 kg でちょうど上限」のような、解を制約に代入した検算も数える
+    - {id: val-verify, kind: 値, label: 制約違反の最大値と目的値の再計算差, report: ['違反', '再計算', '代入して', '独立(に|して)?(再)?検証', 'violation', '解の確認', '実行可能か', 'この解で\s*\d', '\d+\s*[·×*・]\s*\d+\s*\+\s*\d+[^。\n]{0,20}=\s*[\d,]+']}
     - {id: val-baseline, kind: 値, label: ベースラインとの目的値比較, report: ['ベースライン', '現行', '貪欲', '改善率', 'baseline']}
     - {id: val-coef-ratio, kind: 値, label: 係数の最大 / 最小比, report: ['係数.{0,12}(比|レンジ|範囲|スケール)', '最大\s*/\s*最小', 'max\s*/\s*min', '数値(的)?(安定|条件)']}
-    - {id: val-dual, kind: 値, label: 双対値と reduced cost, report_all: ['双対|シャドウ\s*プライス|shadow', 'reduced|被約|限界利益|機会費用']}
+    # 用語を使わずに「材料 1 kg の価値は約 16.7 円」「Z を 1 単位作ると約 6.7 円損」と書いたものも数える
+    - {id: val-dual, kind: 値, label: 双対値と reduced cost, report_all: ['双対|シャドウ\s*プライス|shadow|(資源|材料|機械)[^。\n]{0,8}1\s*(単位|kg|時間)[^。\n]{0,6}(価値|価格)|1\s*(kg|時間|単位)\s*増やすと', 'reduced|被約|限界利益|機会費用|[\d.]+\s*円[^。\n]{0,6}損|損[^。\n]{0,12}[\d.]+\s*円|[\d.]+\s*円\s*多く稼|損になる幅']}
     - {id: val-scale, kind: 値, label: 規模とソルバー設定, report_all: ['(変数|制約)(の)?\s*数|\d+\s*(変数|制約)|(変数|制約)\s*[:：]?\s*\d+', 'HiGHS|CBC|GLPK|CLP|linprog|ソルバー|solver']}
