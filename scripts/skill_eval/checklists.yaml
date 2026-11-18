@@ -200,3 +200,70 @@ clustering: # k-means
     - {id: val-cluster-n, kind: 値, label: 各クラスタの n, report: ['人数', '\(?n\s*[=＝]\s*\d+', '最小クラスタ']}
     - {id: val-stability, kind: 値, label: 安定性（ARI）, code: ['adjusted_rand_score\('], report: ['ARI.{0,30}\d\.\d']}
     - {id: val-seed, kind: 値, label: n_init と乱数 seed, report: ['n_init', 'seed\s*[=＝]\s*\d+', '(乱数|シード).{0,12}\d+']}
+
+# 時刻も実験前の指標も無いデータ（user_id・group・converted だけ）なので、A/A バランス・期間・途中で見た回数・
+# 累積効果の推移は「このデータでは確かめられない」と書くのが正しい出力になる。この 4 つは否定の文でも数え、
+# 累積効果の推移は図ではなく値の項目にした。連続指標の分布図・多群のフォレストプロット・CUPED の行は入れていない
+ab-test: # 二値指標（CVR）、2 群、ユーザー単位の割付
+  items:
+    - {id: fig-rate-ci, kind: 図, label: 群別の比率と 95% CI の棒, code: ['errorbar\(', 'yerr\s*=', 'pointplot\(', 'barplot\(']}
+    - {id: val-srm, kind: 値, label: SRM（割付比の χ² 検定）, report: ['SRM', 'sample ratio', '割付比.{0,30}(χ|カイ|chi|検定|p\s*[=＝])', '(χ|カイ)\s*二?乗?.{0,12}(割付|人数|群の大きさ)']}
+    - {id: val-dup, kind: 値, label: 重複曝露（ユーザーあたり 1 行か）, report: ['重複', 'duplicat', '一意', 'ユニーク', 'unique'], allow_negation: true}
+    - {id: val-unit, kind: 値, label: 割付単位と分析単位, report: ['割付単位', '分析単位', '(割付|割り付け|割り当て|ランダム化|振り分け)の?単位', '単位.{0,8}(一致|揃)']}
+    - {id: val-design, kind: 値, label: 事前設計（主要指標・MDE・必要 n・期間）, report: ['MDE', '最小検出', '検出力', '必要(な)?\s*(n|サンプル)', '\bpower\b', '事前(設計|登録)'], allow_negation: true}
+    - {id: val-aa, kind: 値, label: 実験前期間のバランス（A/A）, report: ['A/A', 'AA\s*テスト', '実験前', '事前期間', '共変量.{0,10}(バランス|偏り)'], allow_negation: true}
+    - {id: val-diff-ci, kind: 値, label: 絶対差・相対リフトと 95% CI, report_all: ['相対リフト|相対差|相対(的な)?(改善|向上|上昇)|lift|リフト', '絶対差|差.{0,40}(95\s*%|信頼区間|CI)|(95\s*%|信頼区間|CI).{0,40}差']}
+    - {id: val-period, kind: 値, label: 期間（指標の周期を整数回カバー）, report: ['整数週', '曜日', '周期', '(実施|実験)期間'], allow_negation: true}
+    - {id: val-peek, kind: 値, label: 途中で結果を見た回数, report: ['途中(経過|で.{0,8}(見|確認|止))', 'のぞき見', 'ピーキング', 'peeking', '逐次', '満了', '(見た|確認した)回数'], allow_negation: true}
+    - {id: val-multi, kind: 値, label: 検定した指標 × セグメントの数, report: ['検定した(指標|数)', '指標\s*[×x]\s*セグメント', '多重(比較|検定|性)', '探索(的|分)', 'Benjamini', '\bBH\b', '主要指標.{0,10}(1|一)\s*つ']}
+    - {id: val-cumulative, kind: 値, label: 累積効果の推移（描いたか、描けない理由）, report: ['累積', 'ノベルティ', 'novelty', 'プライマシー', 'primacy'], allow_negation: true}
+
+causal-observational: # 二値処置（1 等客室）・IPW。マッチング・DML・連続処置・CATE の行は入れていない
+  items:
+    - {id: fig-ps-overlap, kind: 図, label: 群別の傾向スコア分布の重ね描き, code: ['set_(title|xlabel)\([^)\n]{0,80}(傾向スコア|propensity|\bPS\b)', '(hist|kdeplot|histplot)\([^)\n]{0,80}\b(ps|e_?hat|pscore|propensity)\w*']}
+    - {id: fig-love, kind: 図, label: love plot（調整前・後の SMD）, code: ['love.?plot', 'set_(title|xlabel)\([^)\n]{0,80}(SMD|標準化平均差|standardi[sz]ed)', 'axvline\([^)\n]{0,20}0\.1\b']}
+    - {id: fig-weights, kind: 図, label: 重みの分布, code: ['(hist|histplot)\([^)\n]{0,60}\b(w|weights?|ipw|iptw|sw|wt)\b', 'set_(title|xlabel)\([^)\n]{0,80}(重み|weight|IPW)']}
+    # 運賃は客室等級で決まる（処置後の変数）ので、調整に入れない理由を書いたかを見る
+    - {id: val-adjset, kind: 値, label: 調整セットの根拠（処置後の変数を入れない）, report: ['処置後', '媒介', 'コライダー', 'collider', 'DAG', 'post.?treatment', '中間変数']}
+    - {id: val-estimand, kind: 値, label: 推定対象と識別仮定, report_all: ['ATE|ATT|平均処置効果', '無交絡|unconfounded|ignorab|条件付き独立|正値性|positivity|SUTVA']}
+    - {id: val-naive, kind: 値, label: ナイーブ比較と調整後推定（+ 95% CI）, report_all: ['ナイーブ|単純(比較|な差|差)|調整前|naive|未調整|生の差', '信頼区間|CI']}
+    - {id: val-smd, kind: 値, label: '|SMD| の最大値（調整後）', report: ['SMD', '標準化平均差', 'standardi[sz]ed mean']}
+    - {id: val-ps-auc, kind: 値, label: 傾向スコアモデルの AUC, report: ['AUC', 'C\s*統計量', 'c.statistic']}
+    - {id: val-trim, kind: 値, label: トリミング範囲と除外 n, report: ['トリミング', 'trim', '切り詰め', 'クリップ', 'clip'], allow_negation: true}
+    - {id: val-ess, kind: 値, label: 有効サンプルサイズ（Kish）, report: ['有効サンプル', 'effective sample', '\bESS\b', 'Kish']}
+    - {id: val-sensitivity, kind: 値, label: 未観測交絡の感度分析（E-value 等）, report: ['E.?value', 'Rosenbaum', '未観測(の)?交絡.{0,40}(強さ|どれだけ|必要|覆|感度)', '感度分析.{0,30}(未観測|交絡)']}
+
+causal-quasi-experimental: # DiD（処置開始は全店で同じ 13 か月目、20 店舗）。IV・RDD・合成コントロールの行は入れていない
+  items:
+    - {id: fig-raw-trends, kind: 図, label: 処置群・対照群の平均の推移（処置時点に縦破線）, code: ['set_title\([^)\n]{0,80}(推移|時系列|トレンド|trend|平均売上|売上の平均)']}
+    - {id: fig-event-study, kind: 図, label: イベントスタディ図（リード・ラグ係数と 95% CI）, code: ['event.?study', 'イベント.?スタディ', 'errorbar\([^)\n]{0,160}(rel|event|lead|lag|相対)']}
+    - {id: val-assumption, kind: 値, label: 識別仮定（並行トレンド）の言語化, report: ['並行トレンド', '平行トレンド', 'parallel.?trend']}
+    - {id: val-cluster-se, kind: 値, label: クラスタ頑健 SE（店舗単位）, report: ['クラスタ[ー]?\s*(頑健|ロバスト)', 'cluster.?robust', '(店舗|store).{0,12}クラスタ', 'クラスタ.{0,12}(店舗|store)']}
+    - {id: val-n-clusters, kind: 値, label: クラスタ数（30〜50 以上か）, report: ['クラスタ[ー]?\s*数', 'n_?clusters', '(ワイルド|wild).{0,12}(クラスタ|ブートストラップ|bootstrap)', 'クラスタ.{0,20}(少な|不足)']}
+    - {id: val-placebo, kind: 値, label: プラセボ効果（偽の処置時点）, report: ['プラセボ', 'placebo', '偽の(処置|介入|施策)']}
+    - {id: val-estimand, kind: 値, label: 推定対象（ATT）, report: ['ATT', '処置群.{0,8}平均処置効果', '(施策|処置)を(入れた|受けた)(店舗|群).{0,10}(平均|効果)']}
+    - {id: val-leads, kind: 値, label: 処置前（リード）係数, report: ['リード', '\blead', '処置前.{0,12}係数', '(事前|プレ)トレンド', 'pre.?trend', '処置前.{0,20}(有意|\|t\||t\s*値|0\s*の周り)']}
+    - {id: val-staggered, kind: 値, label: 段階的処置（staggered）の扱い, report: ['段階的', 'staggered', '(処置|施策|導入)(の)?(開始|時期|時点).{0,16}(同じ|同一|揃|共通|一斉|異な)', '一斉', 'Callaway', 'Sun.?Abraham', '負の重み'], allow_negation: true}
+
+# モンテカルロ（入力は三角分布の見積り、実データなし）。DES・感度分析・シナリオ比較の行と、
+# 入力分布の根拠の行（三角分布はプロンプトで与えられていて、この行は試せない）は入れていない
+simulation:
+  items:
+    - {id: fig-running, kind: 図, label: running mean ± 95% CI vs 反復数, code: ['running', 'cumsum\([^)\n]{0,60}\)\s*/', 'expanding\(', 'cum_?mean', 'set_(title|xlabel)\([^)\n]{0,80}(収束|反復(回)?数|試行(回)?数|iteration|n_?rep)']}
+    - {id: fig-hist, kind: 図, label: 出力の分布（ヒスト + パーセンタイルの縦破線）, code_all: ['hist\(|histplot\(', 'axvline\(']}
+    - {id: val-seed, kind: 値, label: seed の明記, report: ['seed', 'シード', '乱数の?種']}
+    - {id: val-mcse, kind: 値, label: MC 標準誤差と CI 半幅, report: ['MCSE', 'モンテカルロ(標準)?誤差', 'MC\s*(標準)?誤差', '標準誤差', '半幅']}
+    - {id: val-verify, kind: 値, label: 既知の答えとの突き合わせ, report: ['解析(解|的)', '理論(値|平均|分布)', '退化', '決定論', '既知の', '突き合わせ', '検算', 'PERT']}
+    - {id: val-tail, kind: 値, label: 裾リスクの精度（分位点の CI か、超過確率と SE）, report: ['(90\s*%\s*点|P90|90\s*パーセンタイル|90\s*%\s*分位|分位点).{0,60}(CI|信頼区間|標準誤差|\bSE\b|±|ブートストラップ|bootstrap)', '(超過|上回る|超える)確率', 'P\s*\(\s*\w+\s*[>≥]']}
+
+optimization: # 純粋な LP（3 変数・3 制約、実行可能）。MIP / CP の gap の図、実行不能時の原因制約、メタヒューリスティクスの行は入れていない
+  items:
+    - {id: fig-solution, kind: 図, label: 解の可視化（制約の余裕が読める図）, code: ['set_title\([^)\n]{0,80}(使用量|使用率|利用率|稼働|制約|生産量|最適解|余裕|スラック|slack|usage|utili[sz]|production|solution)', 'set_ylabel\([^)\n]{0,60}(使用量|使用率|利用率|生産量)', 'fill_between\(', 'contourf?\(', 'Polygon\(']}
+    - {id: fig-tornado, kind: 図, label: 感度分析の tornado 図, code: ['tornado', 'トルネード', 'set_title\([^)\n]{0,80}(感度|sensitivity)']}
+    - {id: val-status, kind: 値, label: ソルバーの status, report: ['status', 'ステータス', '\bOptimal\b']}
+    - {id: val-time, kind: 値, label: 求解時間, report: ['求解時間', '計算時間', '実行時間', '(求解|計算|解く).{0,8}\d+(\.\d+)?\s*(秒|ms|sec)', 'solve.?time', 'runtime']}
+    - {id: val-verify, kind: 値, label: 制約違反の最大値と目的値の再計算差, report: ['違反', '再計算', '代入して', '独立(に|して)?(再)?検証', 'violation']}
+    - {id: val-baseline, kind: 値, label: ベースラインとの目的値比較, report: ['ベースライン', '現行', '貪欲', '改善率', 'baseline']}
+    - {id: val-coef-ratio, kind: 値, label: 係数の最大 / 最小比, report: ['係数.{0,12}(比|レンジ|範囲|スケール)', '最大\s*/\s*最小', 'max\s*/\s*min', '数値(的)?(安定|条件)']}
+    - {id: val-dual, kind: 値, label: 双対値と reduced cost, report_all: ['双対|シャドウ\s*プライス|shadow', 'reduced|被約|限界利益|機会費用']}
+    - {id: val-scale, kind: 値, label: 規模とソルバー設定, report_all: ['(変数|制約)(の)?\s*数|\d+\s*(変数|制約)|(変数|制約)\s*[:：]?\s*\d+', 'HiGHS|CBC|GLPK|CLP|linprog|ソルバー|solver']}
