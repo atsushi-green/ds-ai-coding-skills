@@ -145,7 +145,8 @@ dimensionality-reduction: # PCA（数値列の要約）。EFA・CFA・UMAP / t-S
     - {id: val-cumvar, kind: 値, label: 累積寄与率, report: ['累積寄与', '累積(説明)?分散', '累積.{0,6}(寄与|説明)', 'cumulative', '寄与率\s*[（(]\s*累積', '(つ|成分|PC\s*\d|第\s*\d\s*主成分)\s*(だけ)?で.{0,16}\d+(\.\d+)?\s*[%％]']}
     - {id: val-standardize, kind: 値, label: 標準化の有無（相関行列か共分散行列か）, report: ['標準化', '相関行列', '共分散行列', 'StandardScaler', 'standardi[sz]', 'z.?スコア'], allow_negation: true}
 
-# 「表か図」でよい項目（上位 k 件の表、ベースラインとの重なり、設定間の Jaccard）は値の側で数える
+# 「表か図」でよい項目（上位 k 件の表、ベースラインとの重なり、設定間の Jaccard）は値の側で数える。
+# 設定間の一致は「設定を変えたときの上位 20 人の重なり」のような言い方も数える
 anomaly-detection: # IsolationForest（ラベルなし、時系列でない）。PR 曲線（ラベルあり）と時系列の行は入れていない
   items:
     - {id: fig-score-hist, kind: 図, label: 異常スコアのヒスト（閾値に縦破線）, code: ['(hist|histplot)\([^)\n]{0,80}score', 'score\w*[^\n]{0,40}\.hist\(']}
@@ -155,7 +156,7 @@ anomaly-detection: # IsolationForest（ラベルなし、時系列でない）�
     - {id: val-contamination, kind: 値, label: 検知件数（contamination）の根拠, report: ['(contamination|検知(件数|率)|異常(の)?(件数|割合)|上位\s*\d+\s*(件|人))[^。\n]{0,40}(根拠|理由|業務|確認(でき|能力|件数)|目安)', '(根拠|理由)[^。\n]{0,20}(contamination|検知(件数|率))', '\d+\s*[%％][^。\n]{0,10}(特別な)?根拠', '慣例(的|として)', '仮置き', '仮に(置|決)', '(業務上の|特別な)(基準|根拠)(が|は)(ない|無い|なく|ありません)'], allow_negation: true}
     # 「閾値は上位 5%」のように件数を言い換えただけのものは数えない。分布の切れ目を確かめた文は数える
     - {id: val-threshold, kind: 値, label: 閾値の根拠, report: ['(閾値|しきい値|カットオフ)[^。\n]{0,40}(根拠|切れ目|業務|件数|分布|決め)', '(分布|スコア|裾)[^。\n]{0,40}切れ目']}
-    - {id: val-jaccard, kind: 値, label: seed・ハイパラ間の上位 k 件の Jaccard, report: ['(seed|シード|max_samples|n_estimators|ハイパラ|設定)[^。\n]{0,60}(Jaccard|ジャッカード|一致)', '(Jaccard|ジャッカード)[^。\n]{0,60}(seed|シード|max_samples|設定|ハイパラ)']}
+    - {id: val-jaccard, kind: 値, label: seed・ハイパラ間の上位 k 件の Jaccard, report: ['(seed|シード|max_samples|n_estimators|ハイパラ|設定)[^。\n]{0,60}(Jaccard|ジャッカード|一致)', '(Jaccard|ジャッカード)[^。\n]{0,60}(seed|シード|max_samples|設定|ハイパラ)', '(seed|シード|設定)[^。\n]{0,30}(変え|振)[^。\n]{0,40}重な']}
     - {id: val-scaling, kind: 値, label: スケーリングの方針, report: ['標準化', 'スケーリング', 'RobustScaler', 'StandardScaler', '(線形|単調)変換に(ほぼ)?不変', '対数(変換|化)'], allow_negation: true}
 
 tree-model: # GBDT（SHAP のケースで採点）。単一木・RF に固有の行（dtreeviz・枝刈り・OOB・最小葉）は入れていない
