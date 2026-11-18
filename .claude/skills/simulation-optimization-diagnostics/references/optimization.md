@@ -10,7 +10,7 @@
 ## ライブラリ
 
 - pulp（HiGHS / CBC）、mip（python-mip）、ortools（`pywraplp` / `cp_model`）、pyomo、cvxpy、scipy.optimize（`linprog` / `milp`）
-- 未導入なら `uv add "pulp[highs]"`（highspy 同梱）。CBC は `uv add "pulp[cbc]"`（cbcbox）で入れて `COIN_CMD` から使う。PuLP 3.x の同梱 CBC と `PULP_CBC_CMD` は非推奨（`DeprecationWarning`）で 4.0 で削除済み
+- 未導入なら `uv add "pulp[highs]"`（highspy 同梱）。CBC は `uv add "pulp[cbc]"`（cbcbox）で入れて `COIN_CMD` から使う。PuLP 3.x の同梱 CBC と `PULP_CBC_CMD` は非推奨（`DeprecationWarning`）で 4.0 で削除済み。`LpVariable.dicts` も 4.0 で削除されたので、変数は `prob.add_variable_dicts` で作る
 - ソルバーが無ければ `scipy.optimize.milp` で代替（小規模のみ。`res.mip_gap` / `res.mip_dual_bound` が取れる）
 
 ## 必ず出す図
@@ -30,25 +30,10 @@
 | 制約違反量の最大値と目的値の再計算差（解を代入して独立再検証） | どちらも < 1e-6 | 整数丸め・許容誤差・単位の確認。再計算差が出るなら定式化と集計のずれ |
 | ベースライン（現行運用・貪欲法・手作業）との目的値比較 | 改善率を報告 | 改善が無いなら定式化の見直し |
 | 係数の最大 / 最小比 | < 1e6 目安 | スケーリング、big-M を必要最小に |
-| LP / MIP: 双対値（シャドウプライス）と reduced cost | 整数条件を外した LP を**別に解いて**取得し、拘束制約の解釈（「容量を 1 増やすと目的値が X 改善」）が書ける | MIP の解から読んだ値は使わない（下の落とし穴） |
+| LP / MIP: 双対値（シャドウプライス）と reduced cost | 整数条件を外した LP を**別に解いて**取得し、拘束制約の解釈（「容量を 1 増やすと目的値が X 改善」）が書ける。符号の向きはソルバーとバージョンで違う（PuLP 3.x の HiGHS は最大化で反転していた）ので、手計算か小さな問題で確かめてから読む | MIP の解から読んだ値は使わない（下の落とし穴） |
 | 規模（変数数 / 制約数 / 整数変数数）とソルバー設定（名前・バージョン・`timeLimit` / `gapRel` / `random_seed`） | 報告に含む。MIP ソルバーも内部でヒューリスティクスを使うので seed を固定する | — |
 | INFEASIBLE 時: 原因制約 | どの制約がどれだけ破れているかまで特定できている | 全制約にスラック変数を足して違反量の最小化で解き直す（elastic 化）。IIS が取れるソルバー（商用・highspy の `getIis`）ならそちらでも |
 | メタヒューリスティクス: seed ≥ 5 の best / mean / worst | ばらつきが小さい。小規模で厳密解と比較 | 反復増、パラメータ再調整 |
-
-取得例（PuLP 3.3.2 + HiGHS。`build(cat)` は同じ問題を指定の変数種別で組む関数）:
-
-```python
-prob, x = build("Integer")  # 変数は prob.add_variable_dicts（LpVariable.dicts は 4.0 で削除）
-prob.solve(pulp.HiGHS(msg=False, timeLimit=60, gapRel=0.01, random_seed=0))  # 打ち切り条件と seed は報告に書く
-assert prob.sol_status not in (pulp.LpSolutionNoSolutionFound, pulp.LpSolutionInfeasible), "解なし"
-obj = pulp.value(prob.objective)
-vals = {"status": pulp.LpStatus[prob.status], "sol_status": pulp.LpSolution[prob.sol_status]}  # 時間切れでも Optimal
-vals["定員超過"] = max(0.0, sum(weight[i] * x[i].value() for i in items) - capacity)  # 解を代入して独立再検証
-vals["目的値の再計算差"] = abs(sum(profit[i] * x[i].value() for i in items) - obj)
-lp, _ = build("Continuous")  # 双対値は整数条件を外した LP を別に解く
-lp.solve(pulp.HiGHS(msg=False, random_seed=0))
-vals["定員の双対値"] = -lp.get_constraint_by_name("capacity").pi  # HiGHS は最大化を最小化に変換するため符号反転
-```
 
 ## 落とし穴
 
