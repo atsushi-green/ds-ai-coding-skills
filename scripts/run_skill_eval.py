@@ -152,6 +152,8 @@ def run_one(
     out_dir = run_dir / case.id / f"r{rep}"
     out_dir.mkdir(parents=True, exist_ok=True)
     sandbox = sandbox_root / f"{case.id}__r{rep}"
+    # 準備の途中で落ちた実行（uv sync の失敗など）の sandbox が残っていると作り直せないので消す
+    shutil.rmtree(sandbox, ignore_errors=True)
     extra_data = {f"data/raw/{d}.csv": dataset_path(sandbox_root, d) for d in case.datasets}
     arm_ops = build_sandbox(REPO_ROOT, sandbox, config, extra_data, arm)
     pyproject_before = (sandbox / "pyproject.toml").read_text(encoding="utf-8")
