@@ -35,21 +35,6 @@
 | 裾リスク（分位点、P(X > 閾値)） | 報告に含む。超過確率は標準誤差 √(p̂(1−p̂)/n) と CI 半幅を併記する（分位点は平均より収束が遅い。精度が要るなら順序統計量の CI を出す） | 反復数を増やす（p̂ が 0 に近いほど必要反復数は桁で増える） |
 | シナリオを比較する場合のみ: CRN の効き | CRN あり / なしの両方で差の SD を出し、CRN 側が小さい | 縮まないなら乱数の同期が崩れている（下の落とし穴） |
 
-取得例（`run_once(rng)` は 1 反復を返す関数）:
-
-```python
-import numpy as np
-from numpy.random import SeedSequence, default_rng
-ss = SeedSequence(20240915)  # 報告に明記する seed
-streams = [default_rng(s) for s in ss.spawn(n_rep)]  # 反復ごとに独立ストリーム
-out = np.array([run_once(rng) for rng in streams])
-mean, mcse = out.mean(), out.std(ddof=1) / np.sqrt(n_rep)  # MC 標準誤差
-ci_half = 1.96 * mcse  # 報告桁に対して十分小さいか
-running = np.cumsum(out) / np.arange(1, n_rep + 1)  # running mean（収束確認の図）
-q05, q50, q95 = np.quantile(out, [0.05, 0.5, 0.95]); p_tail = (out > threshold).mean()  # 裾リスク
-p_tail_se = np.sqrt(p_tail * (1 - p_tail) / n_rep)  # 裾の MCSE。分位点は平均より収束が遅い
-```
-
 ## 落とし穴
 
 - 各反復の先頭で seed を固定し直すと全反復が同じ乱数列になる。`np.random.*` のグローバル状態に依存せず、`default_rng` で作った rng を引数で引き回す（並列化・CRN でのバグ源）
