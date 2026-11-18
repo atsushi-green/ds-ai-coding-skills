@@ -212,12 +212,13 @@ ab-test: # 二値指標（CVR）、2 群、ユーザー単位の割付
     - {id: val-srm, kind: 値, label: SRM（割付比の χ² 検定）, report: ['SRM', 'sample ratio', '割付比.{0,30}(χ|カイ|chi|検定|p\s*[=＝])', '(χ|カイ)\s*二?乗?.{0,12}(割付|人数|群の大きさ)']}
     - {id: val-dup, kind: 値, label: 重複曝露（ユーザーあたり 1 行か）, report: ['重複', 'duplicat', '一意', 'ユニーク', 'unique'], allow_negation: true}
     - {id: val-unit, kind: 値, label: 割付単位と分析単位, report: ['割付単位', '分析単位', '(割付|割り付け|割り当て|ランダム化|振り分け)の?単位', '単位.{0,8}(一致|揃)']}
-    - {id: val-design, kind: 値, label: 事前設計（主要指標・MDE・必要 n・期間）, report: ['MDE', '最小検出', '検出力', '必要(な)?\s*(n|サンプル)', '\bpower\b', '事前(設計|登録)'], allow_negation: true}
+    # MDE や検出力を事後に計算しただけのものは数えない。設計が事前に決まっていたかに触れたものを数える
+    - {id: val-design, kind: 値, label: 事前設計（主要指標・MDE・必要 n・期間）, report: ['事前(の)?(設計|登録)', '事前に(決|固定|定)', '(設計|計画)書', 'ガードレール', '(主要|主)指標[^。\n]{0,20}(事前|あらかじめ)', '(事前|あらかじめ)[^。\n]{0,20}(MDE|サンプルサイズ|必要[^。\n]{0,4}(n|人数|サンプル)|期間)[^。\n]{0,20}(決|固定|定)'], allow_negation: true}
     - {id: val-aa, kind: 値, label: 実験前期間のバランス（A/A）, report: ['A/A', 'AA\s*テスト', '実験前', '事前期間', '共変量.{0,10}(バランス|偏り)'], allow_negation: true}
     - {id: val-diff-ci, kind: 値, label: 絶対差・相対リフトと 95% CI, report_all: ['相対リフト|相対差|相対(的な)?(改善|向上|上昇)|lift|リフト', '絶対差|差.{0,40}(95\s*%|信頼区間|CI)|(95\s*%|信頼区間|CI).{0,40}差']}
     - {id: val-period, kind: 値, label: 期間（指標の周期を整数回カバー）, report: ['整数週', '曜日', '周期', '(実施|実験)期間'], allow_negation: true}
     - {id: val-peek, kind: 値, label: 途中で結果を見た回数, report: ['途中(経過|で.{0,8}(見|確認|止))', 'のぞき見', 'ピーキング', 'peeking', '逐次', '満了', '(見た|確認した)回数'], allow_negation: true}
-    - {id: val-multi, kind: 値, label: 検定した指標 × セグメントの数, report: ['検定した(指標|数)', '指標\s*[×x]\s*セグメント', '多重(比較|検定|性)', '探索(的|分)', 'Benjamini', '\bBH\b', '主要指標.{0,10}(1|一)\s*つ']}
+    - {id: val-multi, kind: 値, label: 検定した指標 × セグメントの数, report: ['検定した(指標|数)', '指標\s*[×x]\s*セグメント', '多重(比較|検定|性)', '探索(的|分)', 'Benjamini', '\bBH\b', '主要指標[^。\n]{0,30}(1|一)\s*つ']}
     - {id: val-cumulative, kind: 値, label: 累積効果の推移（描いたか、描けない理由）, report: ['累積', 'ノベルティ', 'novelty', 'プライマシー', 'primacy'], allow_negation: true}
 
 causal-observational: # 二値処置（1 等客室）・IPW。マッチング・DML・連続処置・CATE の行は入れていない
