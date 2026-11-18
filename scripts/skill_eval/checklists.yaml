@@ -261,7 +261,8 @@ simulation:
     - {id: fig-running, kind: 図, label: running mean ± 95% CI vs 反復数, code: ['running', 'cumsum\([^)\n]{0,60}\)\s*/', 'expanding\(', 'cum_?mean', 'set_(title|xlabel)\([^)\n]{0,80}(収束|反復(回)?数|試行(回)?数|iteration|n_?rep)']}
     - {id: fig-hist, kind: 図, label: 出力の分布（ヒスト + パーセンタイルの縦破線）, code_all: ['hist\(|histplot\(', 'axvline\(']}
     - {id: val-seed, kind: 値, label: seed の明記, report: ['seed', 'シード', '乱数の?種']}
-    - {id: val-mcse, kind: 値, label: MC 標準誤差と CI 半幅, report: ['MCSE', 'モンテカルロ(標準)?誤差', 'MC\s*(標準)?誤差', '標準誤差', '半幅']}
+    # 「90% 点のぶれは ±0.05 日程度」「推定誤差 ±0.004」のように、モンテカルロの誤差の大きさを書いたものも数える
+    - {id: val-mcse, kind: 値, label: MC 標準誤差と CI 半幅, report: ['MCSE', 'モンテカルロ(標準)?誤差', 'MC\s*(標準)?誤差', '標準誤差', '半幅', '推定誤差', 'ぶれ[^。\n]{0,12}±']}
     - {id: val-verify, kind: 値, label: 既知の答えとの突き合わせ, report: ['解析(解|的)', '理論(値|平均|分布)', '退化', '決定論', '既知の', '突き合わせ', '検算', 'PERT']}
     - {id: val-tail, kind: 値, label: 裾リスクの精度（分位点の CI か、超過確率と SE）, report: ['(90\s*%\s*点|P90|90\s*パーセンタイル|90\s*%\s*分位|分位点).{0,60}(CI|信頼区間|標準誤差|\bSE\b|±|ブートストラップ|bootstrap)', '(超過|上回る|超える)確率', 'P\s*\(\s*\w+\s*[>≥]']}
 
