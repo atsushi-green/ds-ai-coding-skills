@@ -17,6 +17,7 @@
 
 ## 必ず出す図
 
+- トレースプロット（1.x: `az.plot_trace_dist` / 0.x: `az.plot_trace`） — 全 chain が毛虫状に重なれば合格。chain が別の場所に張り付けば多峰性
 - ランクプロット（1.x: `az.plot_rank_dist` / 0.x: `az.plot_rank`） — 一様なら合格。chain 数が多いときはトレースより読みやすい
 - エネルギープロット（`az.plot_energy`） — 2 つの分布が重なれば合格（BFMI 低下の可視化）
 - 事後予測チェック（1.x: `az.plot_ppc_dist`、二値・カウントは `az.plot_ppc_pava` / `az.plot_ppc_rootogram` / 0.x: `az.plot_ppc(idata, data_pairs={"y": "y_rep"})`） — 観測が予測分布の典型域に入れば合格。収束診断の代替ではない
