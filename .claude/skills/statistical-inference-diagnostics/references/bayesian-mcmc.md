@@ -10,32 +10,13 @@
 ## ライブラリ
 
 - **cmdstanpy**（サンプリング）+ **ArviZ**（診断）を標準とする。Stan モデルは `.stan` ファイルに書き `CmdStanModel(stan_file=...)` でコンパイル
-- 診断は `az.from_cmdstanpy(fit)` で ArviZ に一元化。**ArviZ 1.x で関数名と戻り値が変わった**（`plot_ppc` → `plot_ppc_dist`、`plot_trace` → `plot_trace_dist` ほか。図は PlotCollection を返し `pc.savefig(path)` で保存、Figure は `pc.viz["figure"].item()`）。下の取得例は 1.x。1.x は Python 3.12 以上でしか入らない（3.11 では `uv add arviz` が 0.x になる）。0.x のコードを動かすなら `arviz<1` に固定する
+- 診断は `az.from_cmdstanpy(fit)` で ArviZ に一元化。**ArviZ 1.x で関数名と戻り値が変わった**（`plot_ppc` → `plot_ppc_dist`、`plot_trace` → `plot_trace_dist` ほか。図は PlotCollection を返し `pc.savefig(path)` で保存、Figure は `pc.viz["figure"].item()`）。1.x は Python 3.12 以上でしか入らない（3.11 では `uv add arviz` が 0.x になる）。0.x のコードを動かすなら `arviz<1` に固定する
+- 事後予測の図は観測と同じ変数名・次元を要求する。`az.from_cmdstanpy` に `posterior_predictive="y_rep"`・`log_likelihood="log_lik"`・`observed_data={"y": np.asarray(y)}`（list のままだと次元が合わず `ValueError`）を渡し、`dims` で 3 つに同じ観測次元を付け、事後予測の `y_rep` を `y` に名前を変える
+- 値は `az.summary` の `r_hat`・`ess_bulk`・`ess_tail`、`sample_stats["diverging"]` の合計、`az.bfmi(idata)["energy"]` の最小値から取る
 - cmdstanpy が未導入なら `uv add cmdstanpy arviz`。CmdStan 本体は先に `uv run python -c "import cmdstanpy; print(cmdstanpy.cmdstan_path())"` で既存のもの（環境変数 `CMDSTAN` か `~/.cmdstan`）を探し、見つからないときだけ `uv run install_cmdstan`（C++ ビルドが要る）。既存の CmdStan がある場所へ `install_cmdstan` を実行しない（ダウンロードし直して上書きし、ビルド済みのものが壊れる）
-
-```python
-import arviz as az  # 1.x
-import numpy as np
-from cmdstanpy import CmdStanModel
-
-fit = CmdStanModel(stan_file="model.stan").sample(
-    data=data, chains=4, iter_warmup=1000, iter_sampling=2000, adapt_delta=0.9, seed=0
-)
-print(fit.diagnose())  # cmdstanpy の組み込み診断を必ず実行し、出力をそのまま報告に貼る
-idata = az.from_cmdstanpy(  # 事後予測の図は観測と同じ変数名・次元を要求するので dims をそろえる
-    fit, posterior_predictive="y_rep", log_likelihood="log_lik",
-    observed_data={"y": np.asarray(data["y"])},  # list のまま渡すと次元が合わず ValueError になる
-    dims={"y": ["obs_id"], "y_rep": ["obs_id"], "log_lik": ["obs_id"]},
-)
-idata["posterior_predictive"] = idata["posterior_predictive"].to_dataset().rename({"y_rep": "y"})
-s = az.summary(idata)
-n_div = int(idata.sample_stats["diverging"].sum())
-print(s["r_hat"].max(), s["ess_bulk"].min(), s["ess_tail"].min(), n_div, float(az.bfmi(idata)["energy"].min()))
-```
 
 ## 必ず出す図
 
-- トレースプロット（1.x: `az.plot_trace_dist` / 0.x: `az.plot_trace`） — 全 chain が毛虫状に重なれば合格。chain が別の場所に張り付けば多峰性
 - ランクプロット（1.x: `az.plot_rank_dist` / 0.x: `az.plot_rank`） — 一様なら合格。chain 数が多いときはトレースより読みやすい
 - エネルギープロット（`az.plot_energy`） — 2 つの分布が重なれば合格（BFMI 低下の可視化）
 - 事後予測チェック（1.x: `az.plot_ppc_dist`、二値・カウントは `az.plot_ppc_pava` / `az.plot_ppc_rootogram` / 0.x: `az.plot_ppc(idata, data_pairs={"y": "y_rep"})`） — 観測が予測分布の典型域に入れば合格。収束診断の代替ではない
@@ -52,7 +33,7 @@ print(s["r_hat"].max(), s["ess_bulk"].min(), s["ess_tail"].min(), n_div, float(a
 | BFMI (min) | > 0.3 | 再パラメータ化 |
 | `fit.diagnose()` の出力 | 警告なし | 出力をそのまま報告に貼る |
 | モデル比較時: Pareto k（`az.loo`） | < 0.7（全観測） | k > 0.7 の観測を個別確認 |
-| サンプラー設定 | chains ≥ 4、warmup / sampling 反復数、adapt_delta、seed を明記 | — |
+| サンプラー設定 | chains ≥ 4、warmup / sampling 反復数、adapt_delta、seed を明記（最初は warmup 1000・sampling 2000・adapt_delta 0.9 から） | — |
 
 ## 落とし穴
 
