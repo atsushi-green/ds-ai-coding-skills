@@ -249,7 +249,7 @@ causal-observational: # 二値処置（1 等客室）・IPW。マッチング・
     - {id: fig-love, kind: 図, label: love plot（調整前・後の SMD）, code: ['love.?plot', 'set_(title|xlabel)\([^)\n]{0,80}(SMD|標準化平均差|standardi[sz]ed)', 'axvline\([^)\n]{0,20}0\.1\b']}
     - {id: fig-weights, kind: 図, label: 重みの分布, code: ['(hist|histplot)\([^)\n]{0,60}\b(w|weights?|ipw|iptw|sw|wt)\b', 'set_(title|xlabel)\([^)\n]{0,80}(重み|weight|IPW)']}
     # 運賃は客室等級で決まる（処置後の変数）ので、調整に入れない理由を書いたかを見る
-    - {id: val-adjset, kind: 値, label: 調整セットの根拠（処置後の変数を入れない）, report: ['処置後', '媒介', 'コライダー', 'collider', 'DAG', 'post.?treatment', '中間変数', '(処置|等級)の(結果|一部)', '(処置|等級)(によって|で)決ま', '効果の一部を消']}
+    - {id: val-adjset, kind: 値, label: 調整セットの根拠（処置後の変数を入れない）, report: ['処置後', '媒介', 'コライダー', 'collider', 'DAG', 'post.?treatment', '中間変数', '(処置|等級)の(結果|一部)', '(処置|等級)(によって|で|と同時に)決ま', '効果の一部を消', '(処置|等級)の代理']}
     - {id: val-estimand, kind: 値, label: 推定対象と識別仮定, report_all: ['ATE|ATT|平均処置効果', '無交絡|unconfounded|ignorab|条件付き独立|正値性|positivity|SUTVA|交換可能|exchangeab|干渉|(他人|互い|乗客同士)[^。\n]{0,20}影響しない|未観測交絡(は)?(なし|ない)']}
     - {id: val-naive, kind: 値, label: ナイーブ比較と調整後推定（+ 95% CI）, report_all: ['ナイーブ|単純(比較|な差|差)|調整前|naive|未調整|生の差', '信頼区間|CI']}
     - {id: val-smd, kind: 値, label: '|SMD| の最大値（調整後）', report: ['SMD', '標準化平均差', 'standardi[sz]ed mean']}
