@@ -65,6 +65,22 @@ mixed-effects: # 二値の目的変数のランダム切片モデル（チケッ
     # ブートストラップに触れたものを数える
     - {id: val-df-approx, kind: 値, label: 係数の自由度近似の限界, report: ['自由度[^。\n]{0,30}(近似|補正|限界)', 'Kenward', 'Satterthwaite', '(Wald|ワルド)\s*(の)?\s*近似', '(CI|信頼区間|標準誤差)[^。\n]{0,20}近似的', '(群|グループ|チケット|クラスタ)\s*(単位)?の?\s*ブートストラップ', 'パラメトリック.?ブートストラップ', '(Wald|ワルド)[^。\n]{0,40}(楽観|過小|狭すぎ|当てにならない|不正確|食い違|信頼でき)']}
 
+# 二値の階層ロジスティック回帰（群 = 乗船港の 3 つ）。ライブラリは指定しない（cmdstanpy 以外なら diagnose の行は出ない）。
+# divergence がある場合のペアプロットと、モデル比較時の Pareto k の行は入れていない
+bayesian-mcmc:
+  items:
+    - {id: fig-trace, kind: 図, label: トレースプロット, code: ['plot_trace', 'set_title\([^)\n]{0,80}(トレース|trace)']}
+    - {id: fig-rank, kind: 図, label: ランクプロット, code: ['plot_rank', 'set_title\([^)\n]{0,80}(ランク|rank)']}
+    - {id: fig-energy, kind: 図, label: エネルギープロット, code: ['plot_energy', 'set_title\([^)\n]{0,80}(エネルギー|energy)']}
+    - {id: fig-ppc, kind: 図, label: 事後予測チェック, code: ['plot_ppc', 'set_title\([^)\n]{0,80}(事後予測|posterior.?predictive|\bPPC\b)']}
+    - {id: val-rhat, kind: 値, label: R-hat (max), report: ['R.?hat', 'R̂', 'Gelman']}
+    - {id: val-ess-bulk, kind: 値, label: ESS bulk (min), report: ['ESS[^。\n]{0,8}bulk', 'bulk[^。\n]{0,8}ESS', 'ess_bulk']}
+    - {id: val-ess-tail, kind: 値, label: ESS tail (min), report: ['ESS[^。\n]{0,8}tail', 'tail[^。\n]{0,8}ESS', 'ess_tail']}
+    - {id: val-div, kind: 値, label: divergent transitions, report: ['divergen', '発散']}
+    - {id: val-bfmi, kind: 値, label: BFMI (min), report: ['BFMI']}
+    - {id: val-diagnose, kind: 値, label: fit.diagnose() の出力, report: ['diagnose', 'Checking sampler transitions', 'Processing csv files']}
+    - {id: val-sampler, kind: 値, label: サンプラー設定（chains・warmup / sampling・adapt_delta・seed）, report_all: ['chain|チェーン', 'warmup|ウォームアップ|tune|バーンイン|burn', 'adapt_delta|target_accept', 'seed|シード|乱数の?種']}
+
 # 連続量の 2 群比較（ユーザーが t 検定を名指しした場合）。比率・分割表・対応あり・多重比較・ANOVA の行は入れていない。
 # 「p 値は 1 つだけ」は出たかでは数えられないので、p 値が出たかだけを数え、事前検定や追加の検定の有無は目で見る
 hypothesis-test:
