@@ -79,7 +79,7 @@ bayesian-mcmc:
     - {id: val-div, kind: 値, label: divergent transitions, report: ['divergen', '発散']}
     - {id: val-bfmi, kind: 値, label: BFMI (min), report: ['BFMI']}
     - {id: val-diagnose, kind: 値, label: fit.diagnose() の出力, report: ['diagnose', 'Checking sampler transitions', 'Processing csv files']}
-    - {id: val-sampler, kind: 値, label: サンプラー設定（chains・warmup / sampling・adapt_delta・seed）, report_all: ['chain|チェーン', 'warmup|ウォームアップ|tune|バーンイン|burn', 'adapt_delta|target_accept', 'seed|シード|乱数の?種']}
+    - {id: val-sampler, kind: 値, label: サンプラー設定（chains・warmup / sampling・adapt_delta・seed）, report_all: ['chain|チェーン', 'warmup|ウォームアップ|tune|バーンイン|burn|調整\s*[0-9,]+\s*(回|ステップ|draws?|反復)?\s*[+＋]', 'adapt_delta|target_accept', 'seed|シード|乱数の?種']}
 
 # 連続量の 2 群比較（ユーザーが t 検定を名指しした場合）。比率・分割表・対応あり・多重比較・ANOVA の行は入れていない。
 # 「p 値は 1 つだけ」は出たかでは数えられないので、p 値が出たかだけを数え、事前検定や追加の検定の有無は目で見る
