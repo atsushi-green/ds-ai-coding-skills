@@ -244,15 +244,15 @@ causal-observational: # 二値処置（1 等客室）・IPW。マッチング・
 
 causal-quasi-experimental: # DiD（処置開始は全店で同じ 13 か月目、20 店舗）。IV・RDD・合成コントロールの行は入れていない
   items:
-    - {id: fig-raw-trends, kind: 図, label: 処置群・対照群の平均の推移（処置時点に縦破線）, code: ['set_title\([^)\n]{0,80}(推移|時系列|トレンド|trend|平均売上|売上の平均)']}
+    - {id: fig-raw-trends, kind: 図, label: 処置群・対照群の平均の推移（処置時点に縦破線）, code: ['set_title\([^)\n]{0,80}(推移|時系列|トレンド|trend|平均売上|売上の平均|平均月次売上|月次平均売上)']}
     - {id: fig-event-study, kind: 図, label: イベントスタディ図（リード・ラグ係数と 95% CI）, code: ['event.?study', 'イベント.?スタディ', 'errorbar\([^)\n]{0,160}(rel|event|lead|lag|相対)']}
     - {id: val-assumption, kind: 値, label: 識別仮定（並行トレンド）の言語化, report: ['並行トレンド', '平行トレンド', 'parallel.?trend']}
     - {id: val-cluster-se, kind: 値, label: クラスタ頑健 SE（店舗単位）, report: ['クラスタ[ー]?\s*(頑健|ロバスト)', 'cluster.?robust', '(店舗|store).{0,12}クラスタ', 'クラスタ.{0,12}(店舗|store)']}
     - {id: val-n-clusters, kind: 値, label: クラスタ数（30〜50 以上か）, report: ['クラスタ[ー]?\s*数', 'n_?clusters', '(ワイルド|wild).{0,12}(クラスタ|ブートストラップ|bootstrap)', 'クラスタ.{0,20}(少な|不足)']}
     - {id: val-placebo, kind: 値, label: プラセボ効果（偽の処置時点）, report: ['プラセボ', 'placebo', '偽の(処置|介入|施策)']}
     - {id: val-estimand, kind: 値, label: 推定対象（ATT）, report: ['ATT', '処置群.{0,8}平均処置効果', '(施策|処置)を(入れた|受けた)(店舗|群).{0,10}(平均|効果)']}
-    - {id: val-leads, kind: 値, label: 処置前（リード）係数, report: ['リード', '\blead', '処置前.{0,12}係数', '(事前|プレ)トレンド', 'pre.?trend', '処置前.{0,20}(有意|\|t\||t\s*値|0\s*の周り)']}
-    - {id: val-staggered, kind: 値, label: 段階的処置（staggered）の扱い, report: ['段階的', 'staggered', '(処置|施策|導入)(の)?(開始|時期|時点).{0,16}(同じ|同一|揃|共通|一斉|異な)', '一斉', 'Callaway', 'Sun.?Abraham', '負の重み'], allow_negation: true}
+    - {id: val-leads, kind: 値, label: 処置前（リード）係数, report: ['リード', '\blead', '(処置|導入|施策|介入)前.{0,12}係数', '(事前|プレ)トレンド', 'pre.?trend', '(処置|導入|施策|介入)前.{0,20}(有意|\|t\||t\s*値|0\s*の周り)']}
+    - {id: val-staggered, kind: 値, label: 段階的処置（staggered）の扱い, report: ['段階的', 'staggered', '(処置|施策|導入)(の)?(開始|時期|時点).{0,16}(同じ|同一|揃|共通|一斉|異な)', '一斉', '同時に?(開始|導入|施策を始め)', '開始(月|時期)が(そろ|揃)', '開始時期がずれ', 'Callaway', 'Sun.?Abraham', '負の重み'], allow_negation: true}
 
 # モンテカルロ（入力は三角分布の見積り、実データなし）。DES・感度分析・シナリオ比較の行と、
 # 入力分布の根拠の行（三角分布はプロンプトで与えられていて、この行は試せない）は入れていない
