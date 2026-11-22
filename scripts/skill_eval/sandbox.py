@@ -92,7 +92,7 @@ def copy_repo_files(repo_root: Path, dest: Path, config: EvalConfig) -> None:
         dest: コピー先（存在していること）。
         config: コピー対象と、中身を差し替えるファイルの指定。
     """
-    ignore = shutil.ignore_patterns(".DS_Store", "__pycache__")
+    ignore = shutil.ignore_patterns(".DS_Store", "__pycache__", *config.copy_ignore)
     for rel in config.copy:
         src = repo_root / rel
         if not src.exists():

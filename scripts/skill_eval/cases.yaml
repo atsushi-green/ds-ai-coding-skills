@@ -80,6 +80,9 @@ config:
     - .gitignore
     - src
     - docs/agent
+  # copy の中でもコピーしないもの。skill-ablation はこの比較の手順を書いた道具で、どの条件にも入れない
+  copy_ignore:
+    - skill-ablation
   data_files:
     - data/raw/train.csv
   # ファイルは置くが、中身は見せないもの（どの条件でも同じ）。README.md は pyproject.toml の readme が

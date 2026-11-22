@@ -75,6 +75,8 @@ class EvalConfig:
         append_system_prompt: 無人実行のための追記。skill 名や手法には触れない。
         extra_args: そのほか claude に渡す引数。
         copy: sandbox にコピーするリポジトリ内のパス。
+        copy_ignore: copy のディレクトリの中でもコピーしない名前（`shutil.ignore_patterns` の
+            パターン）。実験の道具である skill（skill-ablation）など、どの条件にも入れないもの。
         data_files: sandbox に読み取り専用でコピーするデータファイル。
         stub_files: sandbox 内の相対パス → 差し替える中身。ファイルは要るが中身を
             エージェントに見せたくないものに使う（どの条件でも同じように差し替える）。
@@ -94,6 +96,7 @@ class EvalConfig:
     append_system_prompt: str = ""
     extra_args: list[str] = field(default_factory=list)
     copy: list[str] = field(default_factory=list)
+    copy_ignore: list[str] = field(default_factory=list)
     data_files: list[str] = field(default_factory=list)
     stub_files: dict[str, str] = field(default_factory=dict)
     skill_overrides: dict[str, str] = field(default_factory=dict)
