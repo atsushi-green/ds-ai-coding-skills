@@ -74,7 +74,7 @@ TASK_REFERENCE_MAP = [
 
 # 相互参照の書き換えを行わないタスクスキル。両陣営を意図的に併記するメタ文書
 # (このスキル自身のように「CLAUDE.md と AGENTS.md」を並べて説明するもの)を登録する。
-REFERENCE_REWRITE_EXEMPT = {"sync-agent-docs"}
+REFERENCE_REWRITE_EXEMPT = {"sync-agent-docs", "skill-ablation"}
 
 
 # --------------------------------------------------------------------------------------

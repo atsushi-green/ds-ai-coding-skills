@@ -99,6 +99,7 @@ Claude Code では `.claude/skills/*/SKILL.md` として（`/plan-analysis` の�
 | `sync-agent-docs` | `/sync-agent-docs` | prompt | Claude/Copilot間のスキル差分の同期 |
 | `run-eda` | `/run-eda` | — | EDAの実装・実行 |
 | `run-modeling` | `/run-modeling` | — | 予測モデリングの実装・評価 |
+| `skill-ablation` | `/skill-ablation` | prompt | skill を外した条件と比べて、要らない指示を削る実験（[比較結果](skill-ablation.md)の手順を一般化したもの） |
 
 ## エージェント文書の同期
 

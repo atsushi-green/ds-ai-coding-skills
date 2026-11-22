@@ -46,6 +46,7 @@ AI コーディングエージェントに「ロジスティック回帰して�
 skill ありで 111 回中 111 回、skill なしで 46 回出ました。`AGENTS.md` に「診断の図と値も出す」と 1 行書くだけの場合は 58 回です。
 この比較をもとに、skill なしでも出る指示と、無くても同じ結果になったコード例は skill から削っています。
 比べ方、費用が約 1.7 倍になること、制約は [比較結果の全文](docs/skill-ablation.md) にあります。
+同じ比べ方を手持ちの skill で試す手順は、[`skill-ablation`](.claude/skills/skill-ablation/SKILL.md) skill にしてあります（Claude Code では `/skill-ablation`）。
 
 ## 使ってみる
 

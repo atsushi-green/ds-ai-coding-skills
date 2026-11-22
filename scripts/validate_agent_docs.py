@@ -64,6 +64,7 @@ REQUIRED_FILES = [
     ".github/prompts/summarize-analysis.prompt.md",
     ".github/prompts/update-agent-docs.prompt.md",
     ".github/prompts/sync-agent-docs.prompt.md",
+    ".github/prompts/skill-ablation.prompt.md",
     # --- Claude Code ---
     "CLAUDE.md",
     # Claude Code Skills
@@ -87,6 +88,7 @@ REQUIRED_FILES = [
     ".claude/skills/summarize-analysis/SKILL.md",
     ".claude/skills/update-agent-docs/SKILL.md",
     ".claude/skills/sync-agent-docs/SKILL.md",
+    ".claude/skills/skill-ablation/SKILL.md",
     # --- 共通ドキュメント ---
     # プロジェクト固有の知識のみを置く。作業手順・規約は skill 側が正本。
     "docs/agent/project-overview.md",

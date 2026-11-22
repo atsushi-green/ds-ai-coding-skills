@@ -1,0 +1,106 @@
+# skill 要否テストの設定の見本。リポジトリのルートに ablation.toml としてコピーし、対象の skill に合わせて書き換える。
+# 例は ds-ai-coding-skills の診断 skill（名前が -diagnostics で終わる 5 つ）を外し、ロジスティック回帰の 1 ケースで比べるもの。
+# パスはすべてリポジトリのルートからの相対パス。
+
+[run]
+claude_bin = "claude"
+model = "claude-opus-5-5"   # 空にすると claude の既定。条件の間では変えない
+effort = "medium"
+repeat = 3                  # 1 条件 × 1 ケースの回数
+timeout_min = 30
+max_budget_usd = 5.0        # 1 実行の上限（暴走よけ）
+out = "outputs/ablation"    # 結果の保存先。transcript に行データが残りうるので git 管理から外しておく
+permission_mode = "acceptEdits"
+# headless では承認する人がいないので、ここに無い Bash は拒否される。試運転で拒否されたものを足す
+allowed_tools = [
+  "Skill", "Bash(uv *)", "Bash(python *)", "Bash(python3 *)", "Bash(ls *)", "Bash(ls)",
+  "Bash(cd *)", "Bash(cat *)", "Bash(head *)", "Bash(wc *)", "Bash(find *)", "Bash(grep *)",
+  "Bash(mkdir *)", "Bash(git status*)", "Bash(git diff*)", "Bash(git log*)",
+]
+# 対話できないので質問ツールを外す。skill の中身だけで足りるかを見るため Web も外す
+disallowed_tools = ["AskUserQuestion", "WebFetch", "WebSearch", "Bash(git push*)", "Bash(git commit*)"]
+# 無人実行のための追記。skill・診断・採点項目には一切触れない（触れると比較にならない）
+append_system_prompt = """
+これは無人の自動実行です。ユーザーに確認質問はできません。判断が必要な点は妥当な仮定を置いて最後まで実行し、
+置いた仮定は最終報告に書いてください。作業ディレクトリの外にはファイルを書かないでください。
+"""
+extra_args = ["--permission-prompts", "none"]
+# sandbox で claude を起動する前に実行するコマンド（依存の導入など）
+setup = ["uv sync --quiet"]
+# sandbox に入れる git 管理下のパス（省略するとすべて）。比較の記録・評価用スクリプト・skill を説明した文書は入れない
+include = [".claude", "CLAUDE.md", "README.md", "pyproject.toml", "uv.lock", ".python-version", ".gitignore", "src", "docs/agent"]
+# include の中でも入れないもの（この skill 自身も外しておく）
+exclude = [".claude/skills/skill-ablation"]
+# git 管理の外だが sandbox に要るファイル（データなど）
+copy_untracked = ["data/raw/train.csv"]
+# skill を外した条件で、残っていてはいけない語（部分一致）。plan が sandbox の中を探し、run が見えていた skill 名と照合する
+watch = ["-diagnostics", "statistical-ml-review"]
+# プロジェクトの外にある同名の skill（plugin や claude.ai アカウントに登録したもの）を見えなくする。
+# 名前空間つきの名前だけを書く（名前空間なしで off にするとプロジェクトの skill まで消える）
+# skill_overrides = { "anthropic-skills:statistical-inference-diagnostics" = "off" }
+
+# すべての条件（full を含む）で中身を差し替えるファイル。skill を説明している README は、残すと skill の代わりになる
+[run.stub]
+"README.md" = "# project\n"
+
+# ---------------------------------------------------------------- ケース
+# ユーザーが実際に打つ文面にする。skill の名前・中身・診断・採点項目には触れない
+
+[[case]]
+id = "glm"
+prompt = """
+Titanic（data/raw/train.csv）で、生存 Survived を性別・客室等級・年齢・運賃で説明するロジスティック回帰をして、
+オッズ比で結果を教えて。
+"""
+
+# ---------------------------------------------------------------- 条件
+# full は書かなくても常にある（skill をそのまま置く）
+
+[arm.none]
+description = "診断 skill と、それに触れる記述を外す。ほかの skill は残す"
+remove = [
+  ".claude/skills/*-diagnostics",
+  ".claude/skills/statistical-ml-review",            # 手法 → reference の対応表を持つ
+  "docs/agent/diagnostics-reference-template.md",
+]
+# ほかの skill が、対象の skill を前提にしている節
+drop_sections = { ".claude/skills/analysis-reporting/SKILL.md" = ["## Diagnostics Summary（診断サマリー）"], ".claude/skills/analysis-reporting/references/report-template.md" = ["### 診断サマリー"] }
+# ルール文書のルーティング表やハードルールなど、対象の skill に触れている行
+drop_lines = [
+  { files = ["CLAUDE.md", ".gitignore", "docs/agent/*.md", ".claude/skills/**/*.md"], patterns = ["diagnostics", "診断", "必ず出す", "statistical-ml-review"] },
+]
+
+[arm.one-line]
+description = "skill は外したまま、ルール文書に 1 行だけ足す"
+extends = "none"
+append = [
+  { file = "CLAUDE.md", after = "- Use `uv` exclusively for Python dependency management. Never use pip, conda, poetry, or pipenv.", line = "- When applying a statistical, ML, causal, simulation, or optimization method, always output its diagnostics with it (図と値をセットで出す)." },
+]
+
+# ---------------------------------------------------------------- 採点表
+# skill が「必ず出す」と定めたものを 1 項目ずつ。figure はスクリプトの描画コード + 画像ファイル、
+# value は最終報告か保存した表に名前が出ること。否定の文（「確認していません」）は数えない
+
+[[item]]
+id = "fig-roc"
+kind = "figure"
+label = "ROC 曲線"
+code = ['roc_curve\(', 'RocCurveDisplay']
+
+[[item]]
+id = "fig-calibration"
+kind = "figure"
+label = "キャリブレーションプロット"
+code = ['calibration_curve\(', 'CalibrationDisplay', 'set_title\([^\n]{0,80}(キャリブレーション|calibration)']
+
+[[item]]
+id = "val-vif"
+kind = "value"
+label = "VIF"
+report = ['\bVIF\b', '分散拡大']
+
+[[item]]
+id = "val-epv"
+kind = "value"
+label = "EPV（少数クラスの件数 / 説明変数の数）"
+report = ['\bEPV\b', 'events? per variable', '1 変数あたりの(イベント|件数)']
