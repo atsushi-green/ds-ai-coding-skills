@@ -44,10 +44,7 @@ AI コーディングエージェントに「ロジスティック回帰して�
 
 3 つの手法（ロジスティック回帰・予測モデルの評価・k-means）を 3 回ずつ実行すると、skill が「必ず出す」と定めた 37 項目は、
 skill ありで 111 回中 111 回、skill なしで 46 回出ました。`AGENTS.md` に「診断の図と値も出す」と 1 行書くだけの場合は 58 回です。
-この比較をもとに、skill なしでも出る指示と、無くても同じ結果になったコード例は skill から削っています。
 比べ方、費用が約 1.7 倍になること、制約は [比較結果の全文](docs/skill-ablation.md) にあります。
-同じ比べ方を手持ちの skill で試す手順は、[`skill-ablation`](.claude/skills/skill-ablation/SKILL.md) skill にしてあります。
-Claude Code なら `claude plugin install skill-ablation --marketplace atsushi-green/ds-ai-coding-skills` で入れて、`/skill-ablation` で使えます。
 
 ## 使ってみる
 
@@ -179,7 +176,7 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 │   ├── instructions/                  # パス別補助指示（Copilot の applyTo 用）
 │   └── prompts/                       # 再利用プロンプト（Copilot）
 ├── .claude-plugin/
-│   └── marketplace.json               # 診断 skill を Claude Code の plugin として配るための定義
+│   └── marketplace.json               # 診断 skill と skill-ablation を Claude Code の plugin として配るための定義
 ├── .claude/
 │   └── skills/                        # 作業別スキルの唯一の置き場（3ツール共通。旧スラッシュコマンドを含む）
 │                                      #   *-diagnostics は2段構成: ルーター SKILL.md + references/<method>.md
@@ -202,6 +199,15 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 │   └── skill_eval/                    #   skill 発火テスト（run_skill_eval.py から手動実行）
 ├── src/analysis_project/              # 再利用可能なPythonモジュール
 └── tests/                             # テスト
+```
+
+## 手持ちの skill で同じ比べ方を試す
+
+[比較結果](docs/skill-ablation.md)と同じ比べ方を手持ちの skill で試す手順は、[`skill-ablation`](.claude/skills/skill-ablation/SKILL.md) skill にしてあります。
+Claude Code なら、次のコマンドで入れて `/skill-ablation` で使えます。
+
+```bash
+claude plugin install skill-ablation --marketplace atsushi-green/ds-ai-coding-skills
 ```
 
 ## 設計の詳細
