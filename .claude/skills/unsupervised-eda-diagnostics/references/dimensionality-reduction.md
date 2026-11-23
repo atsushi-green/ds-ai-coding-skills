@@ -16,13 +16,13 @@
 
 ## 必ず出す図
 
-平行分析は乱数データへの PCA を 100 回、UMAP / t-SNE のグリッドは埋め込みを 3〜9 回作り直す。n・p が大きいと 1 枚に数時間かかるので、埋め込みと平行分析は層化サブサンプルで作り、使った n と反復数を図に書く。
+平行分析は実データと同じ形の正規乱数データへの PCA を 100 回（seed を固定）、UMAP / t-SNE のグリッドは埋め込みを 3〜9 回作り直す。n・p が大きいと 1 枚に数時間かかるので、埋め込みと平行分析は層化サブサンプルで作り、使った n と反復数を図に書く。
 
 **使った手法の行だけ**を出す:
 
 | 使った手法 | 出す図 | 合格の読み方 |
 |---|---|---|
-| PCA | スクリープロットに**平行分析**のランダム固有値（95 パーセンタイル）を重ねる（採用成分数に縦破線）/ バイプロット（スコアの散布 + 負荷ベクトル） | 実データの固有値がランダムを上回る数が成分数の根拠 / 変数ベクトルの向きで軸の意味が読める |
+| PCA | スクリープロットに**平行分析**のランダム固有値（95 パーセンタイル）を重ねる（採用成分数に縦破線） | 実データの固有値がランダムを上回る数が成分数の根拠 |
 | EFA | スクリープロット + 平行分析（PCA と同じ図）/ バイプロット（因子得点の散布 + 負荷ベクトル）/ 回転後負荷量のヒートマップ | 同上 / 変数ベクトルの向きで因子の意味が読める / 各変数の主負荷 ≥ 0.4 かつ交差負荷 < 0.3 |
 | CFA / SEM | 標準化負荷量（パス係数）の表かパス図 / 残差相関（標本とモデルが含意する共分散の差を標本 SD で標準化）のヒートマップ | 各観測変数が想定した因子に載っている / \|残差相関\| > 0.1 のセルが局所的な不適合の場所として読める |
 | UMAP / t-SNE | ハイパラを変えた 3 枚以上のグリッド（perplexity 5 / 30 / 50 または n_neighbors 5 / 15 / 50。各パネルに trustworthiness を併記） | 大域構造が設定間で保たれる。「クラスタの大きさと距離は意味を持たない」を図に注記 |
@@ -42,23 +42,7 @@
 | UMAP / t-SNE | trustworthiness（近傍保存率） | > 0.9 目安（`n_neighbors` を明記） | perplexity / n_neighbors を変える。それでも低ければ埋め込みの図で構造を語らない |
 | UMAP / t-SNE | seed 3 本で構造が同じか | 安定 | 「設定依存」と明記 |
 
-取得例（`X` は数値列だけの polars DataFrame）。PCA:
-
-```python
-import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
-
-Xm = X.to_numpy()  # factor_analyzer・sklearn には配列で渡す
-Xs = StandardScaler().fit_transform(Xm)
-pca = PCA().fit(Xs)
-eig, cum_ratio = pca.explained_variance_, np.cumsum(pca.explained_variance_ratio_)
-rng = np.random.default_rng(0)  # 平行分析: 同形の乱数データの固有値（95 パーセンタイル）と比較
-rand_eig = np.array([PCA().fit(rng.standard_normal(Xs.shape)).explained_variance_ for _ in range(100)])
-n_factors = int((eig > np.percentile(rand_eig, 95, axis=0)).sum())
-```
-
-EFA（平行分析までは PCA と同じ）:
+取得例（`X` は数値列だけの polars DataFrame。`Xm = X.to_numpy()`、`Xs` は `StandardScaler` で標準化した `Xm`、`n_factors` は平行分析で決めた数）。EFA:
 
 ```python
 from factor_analyzer.factor_analyzer import calculate_bartlett_sphericity, calculate_kmo
@@ -83,6 +67,7 @@ trust = {p: trustworthiness(Xs, e, n_neighbors=10) for p, e in emb.items()}  # �
 CFA / SEM（semopy は SRMR と RMSEA の CI を返さないので、標本と含意の共分散から計算する）:
 
 ```python
+import numpy as np
 import semopy
 from scipy.optimize import brentq
 from scipy.stats import ncx2

@@ -14,20 +14,15 @@ STL の `period` も差分も意味を失うので、可視化より前に次を
 
 1. **頻度と時点ラベルを宣言する** — 毎時 / 日次 / 週次 / 月次のどれか、各期に貼る日付は期間の先頭か末尾か（月次なら 1 月の行が `2024-01-01` か `2024-01-31` か。pandas では `MS` と `ME`）。以降の `period`・季節次数 `s`・グリッド整形の頻度をこれに揃える。末尾スタンプの系列に `asfreq("MS")` をかけると、日付が一つも一致せず警告なしに全行が欠測になる
 2. **欠測している期を行として起こす** — 欠測は `NaN` ではなく**行の不在**として現れる。等間隔グリッドに整形して顕在化させ、欠測期間数を報告する
-3. **同じ時点に複数行がないか数える** — あるなら、系列の粒度が意図とずれている（店舗別の行を全社の系列として扱っている等）か、結合で行が増えている。合算してよいのは前者だけで、後者を合算すると増えた分だけ値が水増しされる。原因を確かめてから合算・重複除去・結合の修正を選ぶ
+3. **同じ時点に複数行がないか数える** — あるなら、系列の粒度が意図とずれている（店舗別の行を全社の系列として扱っている等）か、結合で行が増えている。合算してよいのは前者だけで、後者を合算すると増えた分だけ値が水増しされる。原因を確かめてから合算・重複除去・結合の修正を選ぶ。グリッド整形（polars の `upsample` など）は重複行をそのまま残すので、整形より先に数える
 4. **末尾の期が完結しているか確認する** — 締まっていない当月・当週を含めると末尾が必ず下がり、存在しない減少トレンドが出る。未完結の期は除外し、除外したと書く
 5. **値を埋めるかは別に決める** — 「イベントが起きなかった（＝0）」と「観測できなかった（＝欠測）」は違う。前者を補間すると実態のない山が、後者を 0 で埋めると実態のない急落ができる。補間したなら方法を報告に書く
-
-```python
-n_dup = df.height - df["date"].n_unique()  # 先に数える。upsample は重複行をそのまま残す
-full = df.sort("date").upsample(time_column="date", every="1mo")  # polars。time_column は Datetime 型
-n_missing = full["y"].null_count()  # 欠けていた期の数（値を埋めるかどうかは別の判断）
-```
 
 ## ライブラリ
 
 - statsmodels（`tsa.STL`、`adfuller`、`kpss`、`plot_acf` / `plot_pacf`、`SARIMAX`、`acorr_ljungbox`、`tsa.api.VAR`）
 - prophet（ユーザー指定時のみ。使う場合も季節 naive と比較する）、ruptures（変化点）。未導入なら `uv add statsmodels ruptures`
+- statsmodels.tsa は `DatetimeIndex` から周期を読むので、時系列そのものは pandas で持ち、`asfreq` で頻度を明示する。前段の集計・結合は polars で行い、`to_pandas().set_index("date")["y"]` のようにモデルへ渡す直前で変換する
 
 ## 必ず出す図（1〜3 は常に出す。4 以降は該当する場合だけ）
 
@@ -59,57 +54,20 @@ n_missing = full["y"].null_count()  # 欠けていた期の数（値を埋める
 | 共通 | 季節周期（コレログラムから読んだ値） | データの粒度と整合（月次なら 12、日次なら 7 等） | 周期の再検討。決め打ちしない |
 | ARIMA・VAR（差分の要否を決めるとき） | ADF p / KPSS p（併記） | 両検定の結論が整合（ADF p < 0.05 かつ KPSS p > 0.05 で定常）。トレンドを含む系列は両検定とも `regression="ct"` に揃える | 差分・対数変換・トレンド除去 |
 | ARIMA | 選んだ次数 (p,d,q)(P,D,Q,s) の根拠 | ACF / PACF の型と整合 | AIC / BIC で補強（情報量基準単独で決めない） |
-| モデルを当てはめた場合 | 残差の Ljung-Box p（複数ラグ。`model_df` は ARIMA なら推定した ARMA パラメータ数 p + q + P + Q、Prophet・ETS は 0） | > 0.05 | 次数追加、季節項追加 |
+| モデルを当てはめた場合 | 残差の Ljung-Box p（複数ラグ。`model_df` は ARIMA なら推定した ARMA パラメータ数 p + q + P + Q、Prophet・ETS は 0。差分で失われる先頭の d + D × s 期と、欠測期の NaN は落としてから渡す） | > 0.05 | 次数追加、季節項追加 |
 | VAR | ラグ次数の根拠（`select_order` の AIC / BIC） | 採用したラグと情報量基準を併記 | 基準が割れるなら両方で当てはめ、結論が変わるかを書く |
 | VAR | 安定性（`is_stable()`）と残差の白色性（`test_whiteness` p） | True / p > 0.05 | 差分・ラグ追加。非定常の水準で当てはめているなら VECM（`statsmodels.tsa.vector_ar.vecm`）を検討 |
 | VAR | 直交化の変数順序 | 報告に明記（インパルス応答は順序で変わる） | 順序を入れ替えて応答が大きく変わるなら、そのことを書く |
 | 変化点 | コスト関数（`model=`）・ペナルティ・`min_size` | すべて明記 | — |
 | 変化点 | 採用ペナルティの前後で変化点数が変わらないか | 平坦な区間にある | 変化点の数は断定せず、位置が安定な変化点だけを報告する |
 | 予測時 | 分割方法と指標の集計単位 | 時間順（ランダム分割・shuffle は禁止）。前処理も学習区間のみで fit。ローリング原点 / `TimeSeriesSplit` を使うなら各 fold の指標の**平均 ± SD と fold 数**を報告し、単発ホールドアウトか CV 平均かを明記する | `TimeSeriesSplit` かローリング原点 |
-| 予測時 | 予測の地平 h | 運用と同じ h 期先の多段先予測で評価する（1 期先の精度を h 期先の精度として報告しない） | h 期先で評価し直す |
-| 予測時 | MAE / RMSE / MASE と**ベースライン**（naive・季節 naive） | ベースラインに勝つ（MASE < 1） | モデル再考。負けたと報告する |
+| 予測時 | MAE / RMSE / MASE と**ベースライン**（naive・季節 naive）。MASE の分母は、学習期間の季節 naive（s 期前の値）の MAE | ベースラインに勝つ（MASE < 1） | モデル再考。負けたと報告する |
 | 予測時 | 予測区間の実測カバレッジ（区間に入った点数 / 検証点数を分母ごと併記） | 名目 ± 5% 程度。n < 20 では推定が不安定なので「参考値」と明記する | 区間の作り方を見直す |
 
-取得例（月次系列 `y` は DatetimeIndex 付きの pandas Series。`y_train` / `y_test` は時間順に分割済み）。
-statsmodels.tsa は `DatetimeIndex` から周期を読むため、時系列そのものは pandas で持つ。前段の集計・結合は polars で行い、
-`to_pandas().set_index("date")["y"]` のようにモデルへ渡す直前で変換する:
+取得例（VAR・変化点。`Y_train` は定常化済みの多変量 DataFrame（DatetimeIndex 付き）、`y_np` は 1 次元の numpy 配列）:
 
 ```python
-from statsmodels.tsa.stattools import adfuller, kpss
-from statsmodels.tsa.seasonal import STL
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-from statsmodels.stats.diagnostic import acorr_ljungbox
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-
-y = y.asfreq("MS")  # 頻度を明示（欠測は NaN として顕在化し、予測結果にも時点ラベルが付く）
-y_f = y.interpolate(limit_area="inside")  # adfuller / kpss は NaN を受け付けない。補間したことを報告する（落とすと等間隔が崩れる）
-adf_p, kpss_p = adfuller(y_f)[1], kpss(y_f, regression="c", nlags="auto")[1]  # KPSS p は表の範囲で切り詰め
-stl = STL(y, period=12).fit()  # STL と SARIMAX は欠測を許容するので原系列のまま渡す
-res = SARIMAX(y_train, order=(1, 1, 1), seasonal_order=(0, 1, 1, 12)).fit(disp=0)
-lb = acorr_ljungbox(res.resid[13:], lags=[12, 24, 36], model_df=3)  # model_df = p+q+P+Q = 1+1+0+1、先頭は d+D*s 分を捨てる
-
-# 予測と予測区間（h 期先の多段先予測）
-fcast = res.get_forecast(steps=len(y_test))
-fc, ci = fcast.predicted_mean, fcast.conf_int(alpha=0.05)  # ci: [lower, upper]
-snaive = np.resize(y_train.to_numpy()[-12:], len(y_test))  # 季節 naive ベースライン
-mae_scale = np.mean(np.abs(y_train.to_numpy()[12:] - y_train.to_numpy()[:-12]))  # 学習期間の季節 naive MAE
-mase = np.mean(np.abs(y_test.to_numpy() - fc.to_numpy())) / mae_scale
-cover = np.mean((y_test.to_numpy() >= ci.iloc[:, 0].to_numpy()) & (y_test.to_numpy() <= ci.iloc[:, 1].to_numpy()))
-
-# 図 5: 実測（学習・検証）・予測・予測区間・ベースラインを同じ軸に並べる
-fig, ax = plt.subplots(figsize=(12, 4), constrained_layout=True)
-ax.plot(y_train.index, y_train, label="実測（学習）")
-ax.plot(y_test.index, y_test, label="実測（検証）")
-ax.plot(fc.index, fc, label="SARIMA 予測")
-ax.fill_between(ci.index, ci.iloc[:, 0], ci.iloc[:, 1], alpha=0.2, label="95% 予測区間")
-ax.plot(y_test.index, snaive, ls=":", label="季節 naive")
-ax.axvline(y_train.index[-1], ls="--", color="gray")  # 予測の起点
-ax.legend()
-```
-
-VAR・変化点（`Y_train` は定常化済みの多変量 DataFrame（DatetimeIndex 付き）、`y_np` は 1 次元の numpy 配列）:
-
-```python
+import numpy as np
 import ruptures as rpt
 from statsmodels.tsa.api import VAR
 
@@ -136,7 +94,7 @@ n_cp = [len(algo.predict(pen=p)) - 1 for p in pens]  # ペナルティ vs 変化
 - ベースライン（naive・季節 naive）比較なしに MAE / RMSE を報告しない。季節 naive に負ける複雑モデルは珍しくない
 - コレログラムを見ずに季節周期を決め打ちしない。KPSS の p 値は表の範囲で切り詰められる（`p > 0.1` のように報告）
 - Prophet のデフォルト予測区間はトレンドの不確実性と観測ノイズしか含まず、季節性の不確実性は入らない（入れるには `mcmc_samples > 0` で完全ベイズ推定）。狭く出やすいので、必ず実測カバレッジで確かめる
-- 欠測への耐性はライブラリで揃っていない。`STL` と `SARIMAX` は NaN を含む系列をそのまま扱えるが、`adfuller` は `MissingDataError`、`kpss` は「cannot convert float NaN to integer」という原因の読めない例外で落ちる。検定に渡す前に欠測の扱いを決める
+- 欠測への耐性はライブラリで揃っていない。`STL` と `SARIMAX` は NaN を含む系列をそのまま扱えるが、`adfuller` は `MissingDataError`、`kpss` は「cannot convert float NaN to integer」という原因の読めない例外で落ちる。`acorr_ljungbox` は例外を出さず、統計量も p 値も NaN で返す（学習期間に欠測があると `SARIMAX` の残差に NaN が残る）。検定に渡す前に欠測の扱いを決める（系列の内側だけを補間する `interpolate(limit_area="inside")` なら等間隔が保たれる。行を落とすと崩れる。補間したことは報告に書く）
 - 対数変換して予測したら逆変換時のバイアス（単純な exp は中央値予測）に言及する
 - 外生変数は「予測時点で入手可能か」を確認する（実績気温は使えない。予報なら可）。これもリーク
 - VAR の Granger 因果とインパルス応答を因果効果と読まない。前者は予測上の先行関係、後者は直交化の順序という仮定の産物

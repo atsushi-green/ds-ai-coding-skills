@@ -39,30 +39,11 @@ p 値は答えの一部ではなく、二値の意思決定が必要なときに
 | 項目 | 合格基準 | 備考 |
 |---|---|---|
 | 差の点推定 + 95% CI | 必ず出す | p 値より先に書く。「検出できた最小効果量」を CI 幅で議論する |
-| 効果量（Cohen's d / Cramér's V / η²）+ CI | 必ず出す | 小 0.2 / 中 0.5 / 大 0.8 の目安を併記（d の場合） |
+| 効果量（Cohen's d / Cramér's V / η²）+ CI | 必ず出す | 小 0.2 / 中 0.5 / 大 0.8 の目安を併記（d の場合）。d は差と同じ向きの符号付きで出す（pingouin の `ttest` が返す `cohen_d` は絶対値なので `compute_effsize` を使う）。CI は `compute_bootci`（`n_boot=2000`、seed 固定）で |
 | 群ごとの n と記述統計 | 必ず出す | 平均・SD・中央値・四分位 |
 | 検定を行ったか / 行っていないか | 明記する | 行った場合は事前仮説を 1 行で。条件を満たさずユーザーの指示で行ったならそう書く |
 | p 値 | **1 つだけ**（事前仮説に対して） | 複数出すなら BH 補正と補正の対象範囲を明記 |
 | 等分散の扱い | 最初から Welch | 等分散検定で検定を選ばない |
-
-取得例（`a`, `b` は 2 群の値の配列）:
-
-```python
-import numpy as np
-import pingouin as pg
-import polars as pl
-# 既定は推定: 群別 n・記述統計 → 差の点推定 + 95% CI + 効果量。検定は事前仮説 1 つに 1 回だけ
-# 群の長さが違ってよいよう縦持ちにする。pingouin には配列（a, b）をそのまま渡す
-desc = (pl.DataFrame({"群": ["a"] * len(a) + ["b"] * len(b), "値": np.concatenate([a, b])})
-        .group_by("群").agg(n=pl.len(), mean=pl.col("値").mean(), sd=pl.col("値").std(),
-                            median=pl.col("値").median(),
-                            q1=pl.col("値").quantile(0.25, interpolation="linear"),
-                            q3=pl.col("値").quantile(0.75, interpolation="linear")))
-res = pg.ttest(a, b, correction=True)  # Welch を最初から。CI95, p_val を 1 行で返す（pingouin ≥ 0.6 の列名）
-diff, diff_ci = np.mean(a) - np.mean(b), res["CI95"].iloc[0]  # 差の点推定と 95% CI（p 値より先に書く）
-d = pg.compute_effsize(a, b, eftype="cohen")  # 符号付き（a − b）。ttest の cohen_d は絶対値で、CI と向きが合わない
-d_ci = pg.compute_bootci(a, b, func="cohen", n_boot=2000, seed=0)  # 効果量の 95% CI（符号付き）
-```
 
 ## 落とし穴
 

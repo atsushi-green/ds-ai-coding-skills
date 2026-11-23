@@ -9,6 +9,7 @@ from typing import Any
 
 import yaml
 
+from skill_eval.arms import Arm, parse_arms
 from skill_eval.datasets import GENERATORS
 
 KINDS = ("explicit", "implicit", "scope", "negative")
@@ -74,7 +75,14 @@ class EvalConfig:
         append_system_prompt: 無人実行のための追記。skill 名や手法には触れない。
         extra_args: そのほか claude に渡す引数。
         copy: sandbox にコピーするリポジトリ内のパス。
+        copy_ignore: copy のディレクトリの中でもコピーしない名前（`shutil.ignore_patterns` の
+            パターン）。実験の道具である skill（skill-ablation）など、どの条件にも入れないもの。
         data_files: sandbox に読み取り専用でコピーするデータファイル。
+        stub_files: sandbox 内の相対パス → 差し替える中身。ファイルは要るが中身を
+            エージェントに見せたくないものに使う（どの条件でも同じように差し替える）。
+        skill_overrides: skill 名 → `off` など。settings の `skillOverrides` として渡し、
+            プロジェクトの外（アカウントやユーザーレベル）にある同名の skill をエージェントから
+            見えなくする。実行の入口が自動で埋めるので、cases.yaml には書かない。
     """
 
     claude_bin: str = "claude"
@@ -88,7 +96,10 @@ class EvalConfig:
     append_system_prompt: str = ""
     extra_args: list[str] = field(default_factory=list)
     copy: list[str] = field(default_factory=list)
+    copy_ignore: list[str] = field(default_factory=list)
     data_files: list[str] = field(default_factory=list)
+    stub_files: dict[str, str] = field(default_factory=dict)
+    skill_overrides: dict[str, str] = field(default_factory=dict)
 
 
 def _is_pattern(name: str) -> bool:
@@ -168,6 +179,12 @@ def load_variants(path: Path) -> dict[str, tuple[str, ...]]:
     """cases.yaml の variants（references の stem → 分岐名の一覧）を返す。"""
     with path.open(encoding="utf-8") as f:
         return _parse_variants(yaml.safe_load(f).get("variants"))
+
+
+def load_arms(path: Path) -> dict[str, Arm]:
+    """cases.yaml の arms（skill 要否テストで比べる条件）を返す。`full` は常に含まれる。"""
+    with path.open(encoding="utf-8") as f:
+        return parse_arms(yaml.safe_load(f).get("arms"))
 
 
 def figure_table_heads(ref_path: Path) -> list[str]:
@@ -276,4 +293,43 @@ def expected_figures(ref_path: Path, *, tables_only: bool = False) -> list[str]:
         if head is not None:
             # Markdown の強調とコード記法を落として一覧で読みやすくする
             items.append(re.sub(r"[`*]", "", head).strip())
+    return items
+
+
+def expected_values(ref_path: Path) -> list[str]:
+    """references の「必ず出す値」節の表から、値の項目名を取り出す。
+
+    表の「項目」列を返す。「区分」列がある表（glm の「共通」「二値」など）は `区分: 項目` にする。
+    合格基準と違反時の対処は references 本体を見る。
+
+    Args:
+        ref_path: references の Markdown ファイル。
+
+    Returns:
+        値の項目名のリスト。節や表が無ければ空。
+    """
+    items: list[str] = []
+    in_section = False
+    item_col: int | None = None
+    group_col: int | None = None
+    for line in ref_path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "):
+            in_section = line.startswith("## 必ず出す値")
+            item_col = group_col = None
+            continue
+        if not in_section or not line.startswith("|") or TABLE_SEP_RE.match(line):
+            continue
+        # エスケープされた \| はセル区切りではない
+        cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
+        if item_col is None:
+            # 見出し行。「項目」列が無い表は対象外
+            if "項目" in cells:
+                item_col = cells.index("項目")
+                group_col = cells.index("区分") if "区分" in cells else None
+            continue
+        if item_col < len(cells):
+            head = cells[item_col]
+            if group_col is not None and group_col < len(cells):
+                head = f"{cells[group_col]}: {head}"
+            items.append(re.sub(r"[`*]", "", head).replace("\\|", "|").strip())
     return items

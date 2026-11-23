@@ -14,6 +14,7 @@ sandbox 側で書き換えられても元データは無傷。
 from __future__ import annotations
 
 import difflib
+import json
 import os
 import shutil
 import stat
@@ -21,6 +22,7 @@ import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 
+from skill_eval.arms import Arm, apply_arm
 from skill_eval.cases import EvalConfig
 
 UV_CACHE_SUBDIR = ".uv-cache"
@@ -40,9 +42,33 @@ COLLECT_SUFFIXES = {
 }  # fmt: skip
 COLLECT_MAX_BYTES = 5 * 1024 * 1024
 DATA_DIRS = ("data/raw", "data/external", "data/interim", "data/processed", "outputs")
-# 入れ子の claude 起動を妨げる可能性のある環境変数（Claude Code の中から実行した場合）と、
-# リポジトリ側の .venv を指したままの VIRTUAL_ENV（sandbox の uv が毎回警告を出す）
-STRIP_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "VIRTUAL_ENV")
+# Claude Code の中（ターミナルの Bash ツール・VS Code 拡張・Agent SDK）からハーネスを実行したとき、
+# 親セッションが子プロセスに渡す環境変数。引き継ぐと、起動する claude が親の設定で動いてしまう
+# （CLAUDE_EFFORT は effort を親と同じ値にし、CLAUDE_CODE_ENABLE_TASKS は使えるツールを変える）。
+# 認証や接続先など利用者が自分で設定する変数（ANTHROPIC_*・CLAUDE_CONFIG_DIR・
+# CLAUDE_CODE_USE_BEDROCK など）は消さないよう、前方一致ではなく名前を列挙する。
+PARENT_SESSION_ENV = (
+    "CLAUDECODE",
+    "CLAUDE_EFFORT",
+    "CLAUDE_PID",
+    "CLAUDE_AGENT_SDK_VERSION",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_SSE_PORT",
+    "CLAUDE_CODE_EXECPATH",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_CODE_CHILD_SESSION",
+    "CLAUDE_CODE_SESSION_ATTENDED",
+    "CLAUDE_CODE_MESSAGING_SOCKET",
+    "CLAUDE_CODE_MESSAGING_TOKEN",
+    "CLAUDE_CODE_ENABLE_TASKS",
+    "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING",
+    "CLAUDE_CODE_QUESTION_PREVIEW_FORMAT",
+    "CLAUDE_CODE_STARTUP_FAILURE_RESULTS",
+    "CLAUDE_CODE_EMIT_STARTUP_TIMING",
+    "MCP_CONNECTION_NONBLOCKING",
+)
+# リポジトリ側の .venv を指したままの VIRTUAL_ENV も外す（sandbox の uv が毎回警告を出す）
+STRIP_ENV = (*PARENT_SESSION_ENV, "VIRTUAL_ENV")
 
 Snapshot = dict[str, tuple[int, int]]
 
@@ -54,26 +80,19 @@ def _copy_read_only(src: Path, target: Path) -> None:
     target.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
 
-def build_sandbox(
-    repo_root: Path,
-    dest: Path,
-    config: EvalConfig,
-    extra_data: dict[str, Path] | None = None,
-) -> None:
-    """リポジトリの必要部分だけをコピーした sandbox を作り、git と uv を初期化する。
+def copy_repo_files(repo_root: Path, dest: Path, config: EvalConfig) -> None:
+    """config.copy のファイルを dest にコピーし、config.stub_files の中身を差し替える。
+
+    差し替えは、ファイルは要るが中身を見せたくないものに使う。README.md は pyproject.toml の
+    readme が指しているので消せない（消すと `uv sync` が失敗する）。一方で診断 skill の説明と
+    比較結果が書いてあり、エージェントが読むと skill の有無による差を測れなくなる。
 
     Args:
         repo_root: コピー元のリポジトリルート。
-        dest: sandbox のディレクトリ（存在していてはいけない）。
-        config: コピー対象とデータファイルの指定。
-        extra_data: sandbox 内の相対パス → コピー元。ケースごとの題材データに使う。
-
-    Raises:
-        FileExistsError: dest が既に存在する場合。
-        FileNotFoundError: 指定したデータファイルが存在しない場合。
+        dest: コピー先（存在していること）。
+        config: コピー対象と、中身を差し替えるファイルの指定。
     """
-    dest.mkdir(parents=True, exist_ok=False)
-    ignore = shutil.ignore_patterns(".DS_Store", "__pycache__")
+    ignore = shutil.ignore_patterns(".DS_Store", "__pycache__", *config.copy_ignore)
     for rel in config.copy:
         src = repo_root / rel
         if not src.exists():
@@ -85,6 +104,40 @@ def build_sandbox(
             shutil.copytree(src, target, ignore=ignore)
         else:
             shutil.copy2(src, target)
+    for rel, text in config.stub_files.items():
+        target = dest / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+
+
+def build_sandbox(
+    repo_root: Path,
+    dest: Path,
+    config: EvalConfig,
+    extra_data: dict[str, Path] | None = None,
+    arm: Arm | None = None,
+) -> list[str]:
+    """リポジトリの必要部分だけをコピーした sandbox を作り、git と uv を初期化する。
+
+    Args:
+        repo_root: コピー元のリポジトリルート。
+        dest: sandbox のディレクトリ（存在していてはいけない）。
+        config: コピー対象とデータファイルの指定。
+        extra_data: sandbox 内の相対パス → コピー元。ケースごとの題材データに使う。
+        arm: skill 要否テストの条件。コピーした skill を、git の初期化より前に間引く。
+
+    Returns:
+        arm で行った操作の記録（arm が無い・full なら空）。
+
+    Raises:
+        FileExistsError: dest が既に存在する場合。
+        FileNotFoundError: 指定したデータファイルが存在しない場合。
+        ValueError: arm が消す対象のパス・見出しが見つからない場合。
+    """
+    dest.mkdir(parents=True, exist_ok=False)
+    copy_repo_files(repo_root, dest, config)
+    # エージェントから見て「最初からその skill が無いリポジトリ」になるよう、コミットの前に間引く
+    arm_ops = apply_arm(dest, arm) if arm is not None else []
     for d in DATA_DIRS:
         (dest / d).mkdir(parents=True, exist_ok=True)
         (dest / d / ".gitkeep").touch()
@@ -107,6 +160,7 @@ def build_sandbox(
     subprocess.run([*git, "commit", "-q", "-m", "sandbox"], cwd=dest, check=True)
     if (dest / "pyproject.toml").is_file():
         subprocess.run(["uv", "sync", "--quiet"], cwd=dest, check=True)
+    return arm_ops
 
 
 def snapshot(root: Path) -> Snapshot:
@@ -191,6 +245,9 @@ def claude_command(config: EvalConfig) -> list[str]:
         cmd += ["--max-budget-usd", str(config.max_budget_usd)]
     if config.append_system_prompt.strip():
         cmd += ["--append-system-prompt", config.append_system_prompt.strip()]
+    if config.skill_overrides:
+        # プロジェクトの外にある同名の skill を見えなくする（isolation.py）
+        cmd += ["--settings", json.dumps({"skillOverrides": config.skill_overrides})]
     if config.allowed_tools:
         cmd += ["--allowedTools", *config.allowed_tools]
     if config.disallowed_tools:

@@ -4,8 +4,11 @@
 
 # ds-ai-coding-skills
 
+**回帰や検定を AI に頼むと、その診断の図と値まで一緒に返ってくる。**<br>
+データ分析のための Agent Skills 集（Claude Code / GitHub Copilot / Codex 対応）
+
 [![CI](https://img.shields.io/github/actions/workflow/status/atsushi-green/ds-ai-coding-skills/ci.yml?branch=main&style=flat-square&label=CI&color=2c7a6d)](https://github.com/atsushi-green/ds-ai-coding-skills/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.11-f26649?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.13-f26649?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![uv](https://img.shields.io/badge/managed%20by-uv-f26649?style=flat-square&logo=uv&logoColor=white)](https://docs.astral.sh/uv/)
 [![Ruff](https://img.shields.io/badge/lint-ruff-f26649?style=flat-square&logo=ruff&logoColor=white)](https://docs.astral.sh/ruff/)
 [![Polars](https://img.shields.io/badge/dataframe-polars-f26649?style=flat-square&logo=polars&logoColor=white)](https://pola.rs/)
@@ -13,25 +16,115 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-ready-f26649?style=flat-square&logo=claude&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
 [![GitHub Copilot](https://img.shields.io/badge/GitHub%20Copilot-ready-f26649?style=flat-square&logo=githubcopilot&logoColor=white)](https://github.com/features/copilot)
 [![Codex](https://img.shields.io/badge/Codex-ready-f26649?style=flat-square&logo=openai&logoColor=white)](https://openai.com/codex/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-f26649?style=flat-square)](LICENSE)
 
 
 </div>
 
 ---
 
+AI コーディングエージェントに「ロジスティック回帰して」と頼むと、係数とオッズ比は返ってきます。
+しかし、その推定を信用してよいかの確認（多重共線性、当てはまり、キャリブレーション）は、頼まない限り省かれがちです。
+
+このリポジトリの `*-diagnostics` skill は、分析手法ごとに「実行したら必ず一緒に出す図と値」を決めておき、頼まなくても出させます。
+
+## 使ってみる
+
+入れ方は 3 通りあります。入れたあとは、いつもどおり分析を頼むだけです。診断に触れる必要はありません。
+
+### 診断 skill だけを、いまのリポジトリに入れる
+
+```bash
+npx skills add atsushi-green/ds-ai-coding-skills
+```
+
+表示される一覧から、名前が `-diagnostics` で終わる 5 つを選びます（[skills CLI](https://github.com/vercel-labs/skills) が、
+Claude Code や Codex など選んだエージェントの置き場所にコピーします）。選択の操作を省くなら、名前を指定します。
+
+```bash
+npx skills add atsushi-green/ds-ai-coding-skills \
+  --skill statistical-inference-diagnostics --skill predictive-modeling-diagnostics \
+  --skill causal-inference-diagnostics --skill unsupervised-eda-diagnostics \
+  --skill simulation-optimization-diagnostics
+```
+
+5 つの skill は他のファイルを参照しません。`.claude/skills/<名前>/` をディレクトリごと手でコピーしても動きます。
+
+### Claude Code の plugin として入れる
+
+```bash
+claude plugin install ds-diagnostics --marketplace atsushi-green/ds-ai-coding-skills
+```
+
+Claude Code 2.1.275 以降で使えます（セッションの中では `/plugin install ds-diagnostics --marketplace atsushi-green/ds-ai-coding-skills`）。
+plugin の skill はプロジェクトの外に置かれるので、手法別の references を読むときに読み取りの許可を求められたら、許可してください。
+無人実行（`claude -p`）で使う場合は、plugin の置き場所の読み取りをあらかじめ許可しておく必要があります。
+プロジェクトの中に skill を置く上の方法なら、この許可は要りません。
+
+### テンプレートとして丸ごと使う
+
+GitHub の **Use this template** から新しいリポジトリを作るか、clone して使います。
+診断 skill に加えて、次のものが入ります。
+
+- ルーター文書 `CLAUDE.md`（Claude Code）と `AGENTS.md`（Copilot / Codex）。ハードルールとスキルのルーティング表を持ち、タスクに応じて該当する skill を適用させます
+- 基本 skill（Python の書き方、polars、SQL、可視化、データの安全な扱い、分析結果の報告など）
+- タスク実行用の skill。Claude Code ではスラッシュコマンドとしても呼べます（例: `/plan-analysis`、`/review-sql`）
+- raw データや秘密情報のコミットを検知する CI
+
+セットアップは [テンプレートとして使うときのセットアップ](#テンプレートとして使うときのセットアップ) を参照してください。
+
+## 入っている診断 skill
+
+5 つのルーターが、19 の手法別 references に振り分けます。常に読み込まれるのはルーターの説明文だけで、
+手法別の本文（必ず出す図・必ず出す値・落とし穴）は、その手法を使うときにだけ読まれます。
+
+| skill（ルーター） | 手法（references） |
+|---|---|
+| `statistical-inference-diagnostics` | 線形回帰、GLM（ロジスティック・ポアソンなど）、混合効果・パネル、仮説検定、生存時間分析、ベイズ推定（MCMC） |
+| `predictive-modeling-diagnostics` | 予測モデルの評価（分割・交差検証・リーク）、決定木・ランダムフォレスト・GBDT、モデル解釈（SHAP など）、時系列 |
+| `causal-inference-diagnostics` | A/B テスト、傾向スコア・IPW・DML、差の差・操作変数・回帰不連続・合成コントロール |
+| `unsupervised-eda-diagnostics` | 欠測・外れ値、クラスタリング、次元削減、異常検知 |
+| `simulation-optimization-diagnostics` | モンテカルロ・離散事象シミュレーション、LP / MIP・メタヒューリスティクス |
+
+報告には、診断項目ごとに実測値・合格基準・判定（`OK` / `要対処` / `確認`）・次アクションを並べた表が付きます。
+各手法でどんな図が出るかは、次のギャラリーで確認できます。
+
+## 診断図ギャラリーの見方
+
+各 `*-diagnostics` skill が「実行したら必ず出す」と定めた図を、実データ（Titanic ほか）で
+出力して並べたものが [診断図ギャラリー](https://atsushi-green.github.io/ds-ai-coding-skills/) です。
+「このskillを使うと、どの手法でどんな図・判定が出てくるのか」を手を動かさずに確認できます。
+
+トップページには「①統計的推論」「②予測モデリング」「③因果推論」「④教師なし・EDA」
+「⑤シミュレーション・最適化」の5スキル・17手法・45図が並びます。左の目次から見たい手法に
+ジャンプできます。
+
+<img src="docs/images/gallery-top.jpg" alt="診断図ギャラリーのトップページ。5スキル・17手法・45図・142診断項目の集計が並ぶ" width="800">
+
+各手法のセクションには、題材（使ったモデル・データ）、判定バッジ（`OK` / `確認` / `要対処`。
+件数つき）、そして実際に出力された図がそのまま並びます。「絞り込み」で `要対処を含む手法` だけに
+表示を絞ることもできます。
+
+<img src="docs/images/gallery-figure.jpg" alt="線形回帰（OLS）セクション。判定バッジと残差4点セットの図" width="800">
+
+- 図の雛形は AI が diagnostics skill に従って生成したもので、人手レビューは行っていません。数値や
+  判定の正しさの保証ではなく、「このskillを使うとこういう図が出る」という雰囲気を掴むためのものです。
+- ソースは [docs/gallery/](docs/gallery/)。デプロイは `.github/workflows/pages.yml`。
+
 ## 関連リンク
 
 | | リンク | 内容 |
 |:-:|---|---|
 | 📊 | [**診断図ギャラリー**](https://atsushi-green.github.io/ds-ai-coding-skills/) | 各 `*-diagnostics` skill が「必ず出す」と定めた図を、実データで出力して並べたもの |
+| 🔬 | [**診断 skill は本当に要るのか**](docs/skill-ablation.md) | skill を外して同じ依頼を投げ、「必ず出す」図と値がどれだけ出るかを比べた結果 |
 | 📝 | [**データサイエンティストのためのAGENTS.mdとSkills**](https://zenn.dev/green_tea/articles/d310e5cf809190) | ルーター文書（`AGENTS.md`）と、Python・SQL・データ処理・可視化などの基本 skill の設計 |
 | 📝 | [**続・データサイエンティストのためのSkills:分析手法×診断可視化セット**](https://zenn.dev/green_tea/articles/55d2761106ee74) | `*-diagnostics` skill 群（図と値をセットで出させる仕組み）の設計と動作例 |
 
-## セットアップ
+## テンプレートとして使うときのセットアップ
 
 ### 前提条件
 
-- Python 3.11
+- Python 3.13（`.python-version` に書いてあり、`uv sync` がこの版で環境を作ります）
 - [uv](https://docs.astral.sh/uv/) がインストール済みであること
 
 ### インストール
@@ -64,6 +157,8 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 │   ├── workflows/ci.yml               # GitHub Actions CI
 │   ├── instructions/                  # パス別補助指示（Copilot の applyTo 用）
 │   └── prompts/                       # 再利用プロンプト（Copilot）
+├── .claude-plugin/
+│   └── marketplace.json               # 診断 skill と skill-ablation を Claude Code の plugin として配るための定義
 ├── .claude/
 │   └── skills/                        # 作業別スキルの唯一の置き場（3ツール共通。旧スラッシュコマンドを含む）
 │                                      #   *-diagnostics は2段構成: ルーター SKILL.md + references/<method>.md
@@ -88,125 +183,36 @@ bash scripts/run_quality_checks.sh                     # 全品質チェック�
 └── tests/                             # テスト
 ```
 
-## エージェント指示体系の設計
+## 同じ依頼を、skill なし・ありで比べる
 
-このリポジトリは **GitHub Copilot**・**Claude Code**・**Codex** の3つに対応しています。
-どのツールを使っても同じルールが効くように、**指示の実体は1か所にしか置かない**方針を取っています。
+同じ依頼を、同じモデル（Claude Opus 5.5）に、診断 skill を外した状態と入れた状態で 3 回ずつ投げた結果です。
 
-### ルーター文書（1つの内容を2ファイルで提供）
+> data/raw/train.csv（Titanic）で、生存 Survived を性別・客室等級・年齢・運賃で説明するロジスティック回帰をして、オッズ比で結果を教えて。
 
-ツールごとに読むファイル名が決まっているため、ファイルは2つありますが**内容は同一**です。
-`## Hard Rules` 以降が一致しているかは `scripts/sync_agent_docs.py --check` がCIで検証します。
-
-| ファイル | 読むツール | 役割 |
-|----------|-----------|------|
-| `CLAUDE.md` | Claude Code | ハードルール・共通コマンド・規約・スキルルーティング。末尾の `## Skills`（skill の `@` import）だけが Claude 固有 |
-| `AGENTS.md` | GitHub Copilot（VS Code / CLI / coding agent）・Codex | 上と同内容。冒頭の導入文だけが固有 |
-
-### スキルと補助ファイル
-
-| パス | 読むツール | 役割 |
-|------|-----------|------|
-| `.claude/skills/*/SKILL.md` | 3ツール共通 | 作業別の詳細手順（Python・SQL・データ処理・可視化・診断など）。ミラーは持たない |
-| `.agents/skills` | Codex | `.claude/skills` へのシンボリックリンク |
-| `.github/instructions/*.instructions.md` | Copilot | パス別の補助指示（`applyTo` による自動適用）。内容はルーター文書の「File-Specific Guidelines」と対応 |
-| `.github/prompts/*.prompt.md` | Copilot | 再利用可能なプロンプト。`.claude/skills/` のタスクスキルと対応 |
-| `docs/agent/` | 3ツール共通 | **このリポジトリでしか通用しない知識のみ**（プロジェクト概要・データカタログ・指標定義）。作業手順や規約は skill 側が正本で、ここには重複させない |
-
-Copilot は `.github/copilot-instructions.md` も読めますが、VS Code / CLI / coding agent はいずれも
-`AGENTS.md` に対応しているため、二重管理を避けて**置いていません**。`AGENTS.md` を読まない
-IDE（JetBrains・Visual Studio・Xcode・Eclipse）で使う場合は、`AGENTS.md` と同内容の
-`.github/copilot-instructions.md` を追加してください。
-
-この設計により、全部入りの巨大な指示ファイルを避け、トークン効率よく必要な情報だけを参照できます。
-
-### 利用可能なスキル（3ツール共通）
-
-| スキル | 用途 |
-|--------|------|
-| `python-project-ops` | 依存関係、テスト、リント、型チェック |
-| `safe-data-handling` | データの安全な取り扱い |
-| `sql-analysis` | SQLの作成・レビュー |
-| `python-style` | Pythonコーディングスタイル |
-| `dataframe-polars` | DataFrameの操作（polars優先） |
-| `visualization` | グラフ・可視化 |
-| `path-and-io` | ファイルパスとI/O |
-| `notebook-workflow` | Notebook作業 |
-| `statistical-ml-review` | 統計・ML分析のレビュー（欠けている図・値を `*-diagnostics` に照らして指摘） |
-| `analysis-reporting` | 分析結果の報告 |
-
-### 手法別診断 skill（*-diagnostics）
-
-手法ごとに「実行したら必ずセットで出す図と値」を定義した skill 群です。LLM は「回帰したら残差を見るべき」と知っていても、頼まれたこと（当てはめて R² を報告）だけで診断を省きがちです。この skill 群は各手法について **図（何が見えれば合格か）・値（合格基準と違反時の対処）・落とし穴** を強制します。ユーザーが診断に言及しなくても、対応する手法を実行した時点で適用されます。
-
-**2 段構成（progressive disclosure）** です。常にコンテキストに載るのは 5 つのルーターの `description` だけで、手法別の本文はルーターが選んだときにだけ読まれます。
-
-```
-.claude/skills/<family>-diagnostics/
-├── SKILL.md            # 第 1 段: ルーター（約 70 行。ルーティング表・隣接 skill・「出力と報告」の共通書式）
-└── references/
-    └── <method>.md     # 第 2 段: 手法別（60〜140 行。適用範囲 / ライブラリ / 必ず出す図 / 必ず出す値 / 落とし穴）
-```
-
-- 置き場は `.claude/skills/` の 1 か所だけです。Claude Code と Copilot は `.claude/skills/` を直接読み、Codex は `.agents/skills`（`.claude/skills` へのシンボリックリンク）から読むので、3 ツールで同じ内容が使われます
-- 各ディレクトリは他ファイルを参照しません。**他リポジトリへは `.claude/skills/<family>-diagnostics/` をディレクトリごとコピーするだけ**で使えます
-- 図は `outputs/diagnostics/<YYYYMMDD-HHMM>_<短縮名>/` に保存し（gitignore 済み）、報告には `| 診断項目 | 実測値 | 合格基準 | 判定 | 次アクション |` の表だけを載せます（判定は `OK` / `要対処` / `確認`）
-- 手法やルーターを追加する手順と雛形は [docs/agent/diagnostics-reference-template.md](docs/agent/diagnostics-reference-template.md)
-- skill が意図どおりに発火するか（頼んだ手法の references を読み、頼んでいない references は読まないか）は、[scripts/skill_eval/](scripts/skill_eval/README.md) のハーネスで確かめられます。ケースごとに `claude -p` を起動するので手動で実行します（費用の目安は同 README）。CI では `cases.yaml` と references の整合性を見るテストだけが走ります
-- 各 reference が「必ず出す」と定めた図を実データで出力したギャラリーを [GitHub Pages](https://atsushi-green.github.io/ds-ai-coding-skills/) で公開しています（5 スキル・17 手法・45 図。ソースは [docs/gallery/](docs/gallery/)）。`.github/workflows/pages.yml` でデプロイします
-- references 内のコード抜粋が使うライブラリ（statsmodels / scikit-learn 1.8 / lifelines / cmdstanpy 2.39 など）は本リポジトリの `pyproject.toml` に含めていないので、使う手法に応じて `uv add` してください
-
-| ルーター（第 1 段） | 家族 | references（第 2 段） |
+| | skill なし | skill あり |
 |---|---|---|
-| `statistical-inference-diagnostics` | 統計的推論 | `ols`（線形・正則化・分位点回帰）, `glm`（ロジスティック・ポアソン・負の二項）, `mixed-effects`（混合効果・パネル）, `hypothesis-test`（検定。**安易に検定させないことが主目的**）, `survival`（KM・Cox・AFT・競合リスク）, `bayesian-mcmc`（cmdstanpy + ArviZ） |
-| `predictive-modeling-diagnostics` | 予測モデリング | `ml-evaluation`（分割・CV・リーク・ベースライン）, `tree-model`（決定木・RF・GBDT）, `model-interpretation`（SHAP・permutation・PDP/ICE）, `time-series`（ARIMA・状態空間・Prophet・VAR・変化点） |
-| `causal-inference-diagnostics` | 因果推論・効果検証 | `ab-test`（A/B テスト・SRM・CUPED）, `causal-observational`（傾向スコア・IPW・DML）, `causal-quasi-experimental`（DiD・IV・RDD・合成コントロール） |
-| `unsupervised-eda-diagnostics` | 教師なし・EDA 前処理 | `missing-data`（欠測・外れ値）, `clustering`（k-means・階層・GMM・DBSCAN）, `dimensionality-reduction`（PCA・因子分析・CFA/SEM・UMAP/t-SNE）, `anomaly-detection`（異常検知） |
-| `simulation-optimization-diagnostics` | シミュレーション・OR | `simulation`（モンテカルロ・離散事象）, `optimization`（LP/MIP・メタヒューリスティクス） |
+| オッズ比と 95% 信頼区間 | 出る | 出る |
+| 診断の図 | 3 回とも 0 枚 | 3 回とも ROC・PR・キャリブレーション・binned residual を出力 |
+| 診断の値 | 3 回とも無し。うち 1 回は報告に「モデルの当てはまりの良さや、変数どうしの相関の強さは確認していません」 | 3 回とも VIF・EPV・AUC・Brier score など 8 項目を、実測値・合格基準・判定の表で報告 |
 
-今後の拡張候補（未作成）: トピックモデル（LDA・BERTopic）、深層学習の学習診断。推薦評価・公平性指標・ドリフト監視・データ品質検証は対象外です。
+<img src="docs/images/ablation-glm.jpg" alt="ロジスティック回帰の生成図の比較。skill なしは図が無く、skill ありは ROC・PR・キャリブレーション・binned residual の 4 パネル" width="900">
 
-注意: Codex を使う場合、Windows で clone するときはシンボリックリンクを有効にしてください（`git config core.symlinks true` と開発者モード）。無効の環境では `.agents/skills` がリンク先パスを書いたテキストファイルになります。Claude Code と Copilot は `.claude/skills/` を直接読むため影響ありません。
+3 つの手法（ロジスティック回帰・予測モデルの評価・k-means）を 3 回ずつ実行すると、skill が「必ず出す」と定めた 37 項目は、
+skill ありで 111 回中 111 回、skill なしで 46 回出ました。`AGENTS.md` に「診断の図と値も出す」と 1 行書くだけの場合は 58 回です。
+比べ方、費用が約 1.7 倍になること、制約は [比較結果の全文](docs/skill-ablation.md) にあります。
 
-### タスク実行用スキル（旧コマンド / プロンプト）
+## 手持ちの skill で同じ比べ方を試す
 
-Claude Code では `.claude/skills/*/SKILL.md` として（`/plan-analysis` のようにスラッシュでも起動可能）、Copilot では引き続き `.github/prompts/*.prompt.md` として提供されるタスク実行用スキル。
+[比較結果](docs/skill-ablation.md)と同じ比べ方を手持ちの skill で試す手順は、[`skill-ablation`](.claude/skills/skill-ablation/SKILL.md) skill にしてあります。
+Claude Code なら、次のコマンドで入れて `/skill-ablation` で使えます。
 
-| スキル | Claude Code | Copilot | 用途 |
-|--------|:-----------:|:-------:|------|
-| `plan-analysis` | `/plan-analysis` | prompt | 分析計画の作成 |
-| `review-sql` | `/review-sql` | prompt | SQLのレビュー |
-| `summarize-analysis` | `/summarize-analysis` | prompt | 分析結果の要約 |
-| `prepare-pr` | `/prepare-pr` | prompt | PR概要の作成 |
-| `update-agent-docs` | `/update-agent-docs` | prompt | エージェント文書の更新 |
-| `sync-agent-docs` | `/sync-agent-docs` | prompt | Claude/Copilot間のスキル差分の同期 |
-| `run-eda` | `/run-eda` | — | EDAの実装・実行 |
-| `run-modeling` | `/run-modeling` | — | 予測モデリングの実装・評価 |
+```bash
+claude plugin install skill-ablation --marketplace atsushi-green/ds-ai-coding-skills
+```
 
-### エージェント文書の同期
+## 設計の詳細
 
-skill 本体はミラーを持たないため、同期が必要なのは次の2種類だけです。
-
-- **ルーター文書**: `CLAUDE.md` ⇔ `AGENTS.md`。`## Hard Rules` 以降の本文が完全に同一であること。冒頭の導入文と、`CLAUDE.md` にだけある `## Skills`（skill の `@` import）は各ファイル固有として比較対象外。
-- **タスク実行スキル**（frontmatter に `disable-model-invocation: true`）: `.claude/skills/<name>/SKILL.md` ⇔ `.github/prompts/<name>.prompt.md`。frontmatter 形式を変換し、Copilot の `${input:...}` プレースホルダや `CLAUDE.md`⇔`AGENTS.md` の相互参照を保持・変換しながら同期。
-
-片方を編集すると差分が生じるため、以下の仕組みで検出・解消します。
-
-- `uv run python scripts/sync_agent_docs.py --check` — 書き込みせず差分の有無だけを判定する（`run_quality_checks.sh` / CIに組み込み済み。ルーター文書の差分のみ終了コード1）。
-- `uv run python scripts/sync_agent_docs.py --from claude`（または `--from github`） — **編集した側を明示して**もう一方へ反映する。方向は必須（mtime による自動判定はしない）。元ファイルの改行コードは保持されます。
-- `/sync-agent-docs`（Claude Code）・prompt（Copilot） — 上記スクリプトを実行した上で、対応するタスクスキルが無い prompt など、判断が必要な差分をエージェントが解消する。
-- ロジックのテスト: `uv run pytest tests/test_sync_agent_docs.py`。
-
-## データの安全性ルール
-
-- `data/raw/` と `data/external/` は不変として扱い、直接変更しない。
-- rawデータ、認証情報、APIキー、トークン、顧客レベルのレコードをコミットしない。
-- 加工データは `data/interim/` や `data/processed/` に出力する。
-- 図表やレポートは `outputs/` に出力する。
-- `.env` ファイルは `.gitignore` でコミット対象外。
-
-## パッケージ管理
-
-- **uv のみを使用**する。pip、conda、poetry は使わない。
-- 依存関係の追加: `uv add <package>`
-- 開発依存の追加: `uv add --group dev <package>`
+指示体系の設計（なぜ `CLAUDE.md` と `AGENTS.md` の2ファイルなのか）、スキル一覧、
+`*-diagnostics` skill の2段構成、エージェント文書の同期方法、データの安全性ルール、
+パッケージ管理方針などの技術的詳細は **[docs/architecture.md](docs/architecture.md)** に
+まとめています。

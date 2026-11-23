@@ -36,13 +36,19 @@ sns.set_theme(
 
 If any text (titles, labels, legends, annotations) contains Japanese, configure a CJK-capable font, **otherwise characters render as tofu (□□□)**.
 
+Configure the font **after** `sns.set_theme(...)`. `set_theme` resets `font.family` to `sans-serif`, so a font set before it is silently lost and the figure renders as tofu.
+
 Preferred approach (cross-platform):
 
 ```python
-import japanize_matplotlib  # uv add japanize-matplotlib
+import matplotlib_fontja  # uv add matplotlib-fontja
+
+matplotlib_fontja.japanize()  # sns.set_theme(...) の後で呼ぶ
 ```
 
-Alternative (set an installed CJK font explicitly):
+Do not use `japanize-matplotlib`: it fails to import on Python 3.12+ (`distutils` was removed). `matplotlib-fontja` is its drop-in successor.
+
+Alternative (set an installed CJK font explicitly, also after `sns.set_theme(...)`):
 
 ```python
 plt.rcParams["font.family"] = "Noto Sans CJK JP"  # or "IPAexGothic", "Hiragino Sans", "Yu Gothic"
@@ -128,18 +134,20 @@ Before finalizing a chart, verify:
 - [ ] **Sample / filter note** when data is subsetted (e.g. "n=1,234, 2024年1月〜6月").
 - [ ] **Bar charts** start y-axis at 0; other chart types use sensible limits.
 - [ ] **Legend** present when multiple series; placement does not overlap data.
-- [ ] **Japanese text** renders correctly (japanize-matplotlib or CJK font configured).
+- [ ] **Japanese text** renders correctly (matplotlib-fontja or a CJK font, configured after `sns.set_theme`).
 - [ ] **Saved** to `outputs/figures/` with descriptive filename, followed by `plt.close(fig)`.
 
 ## Example
 
 ```python
 from pathlib import Path
+
 import matplotlib.pyplot as plt
+import matplotlib_fontja
 import seaborn as sns
-import japanize_matplotlib  # noqa: F401  # 日本語フォント有効化
 
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.2)
+matplotlib_fontja.japanize()  # 日本語フォント。set_theme がフォントを戻すので後で呼ぶ
 
 Path("outputs/figures").mkdir(parents=True, exist_ok=True)
 

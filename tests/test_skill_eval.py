@@ -381,6 +381,31 @@ def test_sandbox_env_keeps_uv_cache_inside_and_drops_parent_venv(tmp_path: Path)
     assert base["VIRTUAL_ENV"] == "/repo/.venv"  # 元の辞書は書き換えない
 
 
+def test_sandbox_env_drops_parent_session_settings(tmp_path: Path) -> None:
+    # Claude Code の中から実行したときに親セッションが渡してくる変数（値は実例に合わせた）
+    base = {
+        "PATH": "/usr/bin",
+        "CLAUDE_EFFORT": "max",
+        "CLAUDE_CODE_ENABLE_TASKS": "0",
+        "CLAUDE_CODE_CHILD_SESSION": "1",
+        "CLAUDE_CODE_SESSION_ID": "parent",
+        "CLAUDE_CODE_MESSAGING_SOCKET": "/tmp/parent.sock",
+        # 利用者が自分で設定する変数。消すと認証や接続先が変わるので残す
+        "CLAUDE_CONFIG_DIR": "/home/u/.claude-work",
+        "CLAUDE_CODE_USE_BEDROCK": "1",
+        "ANTHROPIC_BASE_URL": "https://example.invalid",
+    }
+    env = sandbox_env(base, tmp_path)
+    # effort が親と同じ値になると、cases.yaml / --effort の指定どおりに実行されない
+    assert not {k for k in env if k in base and k.startswith("CLAUDE_")} - {
+        "CLAUDE_CONFIG_DIR",
+        "CLAUDE_CODE_USE_BEDROCK",
+    }
+    assert env["CLAUDE_CONFIG_DIR"] == "/home/u/.claude-work"
+    assert env["CLAUDE_CODE_USE_BEDROCK"] == "1"
+    assert env["ANTHROPIC_BASE_URL"] == "https://example.invalid"
+
+
 # --------------------------------------------------------------------------------------
 # report
 # --------------------------------------------------------------------------------------

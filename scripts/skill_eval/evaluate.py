@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from skill_eval.cases import Case, reference_short_name
+from skill_eval.isolation import namespaced_copies, project_skill_names
 from skill_eval.transcript import Transcript
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".pdf"}
@@ -40,6 +41,7 @@ def evaluate(
     *,
     timed_out: bool = False,
     report_texts: dict[str, str] | None = None,
+    check_firing: bool = True,
 ) -> dict[str, Any]:
     """発火の判定と、レポートに載せる事実をまとめる。
 
@@ -52,19 +54,26 @@ def evaluate(
         report_texts: 生成された Markdown（sandbox からの相対パス → 本文）。判定表を
             報告ファイル（outputs/reports/*.md など）に書き、最終応答には要約だけを載せる
             ことがあるので、最終応答と合わせて探す。
+        check_firing: 発火の合否を付けるか。skill を間引いた arm では期待する skill 自体が
+            無いので False にする（合否を付けず、実行できたら DONE にする）。
 
     Returns:
-        JSON にそのまま保存できる辞書。`status` は PASS / FAIL / ERROR。
+        JSON にそのまま保存できる辞書。`status` は PASS / FAIL / ERROR、
+        check_firing が False なら DONE / ERROR。
     """
     loaded = tx.loaded_skills()
     refs = tx.read_references()
     first_run = tx.first_code_run_index()
 
-    missing_skills = [s for s in case.expect.skills if s not in loaded]
-    missing_refs = [r for r in case.expect.references if r not in refs]
-    forbidden = sorted(
-        [s for s in loaded if _matches_any(s, case.forbid.skills)]
-        + [r for r in refs if _matches_any(r, case.forbid.references)]
+    missing_skills = [s for s in case.expect.skills if s not in loaded] if check_firing else []
+    missing_refs = [r for r in case.expect.references if r not in refs] if check_firing else []
+    forbidden = (
+        sorted(
+            [s for s in loaded if _matches_any(s, case.forbid.skills)]
+            + [r for r in refs if _matches_any(r, case.forbid.references)]
+        )
+        if check_firing
+        else []
     )
     # 「references を読んでから実行する」を守ったか（実行が無ければ判定しない）
     read_before_run = {
@@ -94,6 +103,8 @@ def evaluate(
     denials = tx.result.get("permission_denials") or []
     if timed_out or not tx.result or tx.result.get("is_error"):
         status = "ERROR"
+    elif not check_firing:
+        status = "DONE"
     elif missing_skills or missing_refs or forbidden:
         status = "FAIL"
     else:
@@ -106,6 +117,8 @@ def evaluate(
         "timed_out": timed_out,
         "result_subtype": tx.result.get("subtype"),
         "available_skills": tx.available_skills,
+        # プロジェクトの外（アカウントなど）にある同名の skill が見えていたら、比較が成り立たない
+        "outside_skill_copies": namespaced_copies(tx.skill_names, project_skill_names(skills_dir)),
         "expected_skills": list(case.expect.skills),
         "expected_references": list(case.expect.references),
         "loaded_skills": loaded,
@@ -129,6 +142,7 @@ def evaluate(
         "duration_ms": tx.result.get("duration_ms"),
         "total_cost_usd": tx.result.get("total_cost_usd"),
         "permission_denials": denials,
+        "quota": tx.quota(),
         "final_text": tx.final_text,
         "parse_errors": tx.parse_errors,
     }

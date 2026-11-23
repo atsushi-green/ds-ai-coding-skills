@@ -18,7 +18,7 @@ Use this skill when changing dependencies, running tests, linting, formatting, t
 
 ## Python Version
 
-- Python 3.11.
+- Python 3.13 (pinned in `.python-version`; `uv` creates the environment with it).
 
 ## Common Commands
 

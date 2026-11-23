@@ -23,7 +23,6 @@
 
 ## 必ず出す図（設計別）
 
-- DiD: 処置群・対照群の生平均の時系列重ね描き（処置時点に縦破線） — 処置前に 2 本が平行なら並行トレンドを支持 / イベントスタディ図（リード・ラグ係数と 95% CI、基準期 = 処置直前、0 に水平破線） — 処置前係数が 0 の周りで無構造なら合格
 - IV: first stage の散布図 or 係数図 — 操作変数と内生変数の関係が明確 / 縮約形（reduced form）の係数図 — 2SLS と符号が整合
 - RDD: ビン化散布図 + 閾値両側の局所線形フィット — 閾値でだけ跳びがある / 推定値 vs バンド幅（最適の 0.5〜2 倍） — バンド幅を変えても推定が安定
 - 合成コントロール: 実測 vs 合成の重ね描き（処置時点に縦破線） — 処置前が重なる / in-space プラセボの全ドナー軌跡（処置ユニットを太線） — 処置ユニットの乖離がプラセボ群の裾にある
@@ -32,7 +31,7 @@
 
 | 設計 | 項目 | 合格基準 | 違反時の対処 |
 |---|---|---|---|
-| DiD | 処置前（リード）係数 | 0 の周りで無構造（\|t\| < 2 目安） | 対照群の再選択、群別トレンド項、合成コントロールへ |
+| DiD | 処置前（リード）係数（処置群 × 相対期のダミーで推定。対照群はどのダミーも 0） | 0 の周りで無構造（\|t\| < 2 目安） | 対照群の再選択、群別トレンド項、合成コントロールへ |
 | DiD | クラスタ数 | ≥ 30〜50 | `pyfixest` の `wildboottest` でワイルドクラスタブートストラップ |
 | DiD | プラセボ効果（偽の処置時点） | 推定値 ≈ 0（p 値ではなく推定値と CI で読む） | 識別仮定を疑う |
 | DiD | 段階的処置（staggered）の扱い | TWFE の負の重みを回避した推定量（Callaway-Sant'Anna 等）と併記 | 「R 推奨（did）」と書く |
@@ -46,23 +45,6 @@
 | RDD | プラセボ（偽の閾値） | 偽の閾値は本当の閾値の片側に置き、その側の観測だけで推定する。推定値 ≈ 0（p 値ではなく推定値と CI で読む） | 識別仮定を疑う |
 | 合成コントロール | 処置前 RMSPE、ドナー重みの表 | 処置前 RMSPE が小さい（対 処置後 RMSPE 比を併記） | ドナープール再選択 |
 | 合成コントロール | 順列 p 値、leave-one-out | 処置ユニットの比が上位 / 安定 | 効果を主張しない |
-
-取得例（DiD イベントスタディ + クラスタ頑健 SE）:
-
-```python
-import polars as pl
-import statsmodels.formula.api as smf
-# rel = 処置時点からの相対期。基準期 = -1（処置直前）。対照群は全期間 0
-rel = pl.when(pl.col("treated") == 1).then(pl.col("rel")).otherwise(-1)
-periods = [p for p in sorted(df.select(rel).to_series().unique()) if p != -1]  # 基準期はダミーから外す
-df2 = df.with_columns([rel.eq(p).cast(pl.Int8).alias(f"rel_{p}") for p in periods])
-rhs = " + ".join(f'Q("rel_{p}")' for p in periods)
-pdf = df2.to_pandas()  # statsmodels の式 API は pandas を前提とする
-es = smf.ols(f"y ~ {rhs} + C(unit) + C(period)", data=pdf).fit(
-    cov_type="cluster", cov_kwds={"groups": pdf["cluster_id"]})  # クラスタ = 処置の割付単位
-coefs = es.params[[f'Q("rel_{p}")' for p in periods]]; ci = es.conf_int().loc[coefs.index]  # リード・ラグ係数と CI
-print("clusters =", df2["cluster_id"].n_unique(), "(< 30〜50 ならワイルドクラスタブートストラップ)")
-```
 
 ## 落とし穴
 

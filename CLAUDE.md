@@ -4,7 +4,7 @@
 `## Hard Rules` onward must match between the two files; `scripts/sync_agent_docs.py --check`
 enforces this. The `## Skills` section at the end is Claude-specific.
 
-This is a **Python 3.11 data science / analysis project**.
+This is a **Python 3.13 data science / analysis project**.
 
 Detailed task-specific procedures are in `.claude/skills/*/SKILL.md`.
 Project-specific context is in `docs/agent/*`.

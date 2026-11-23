@@ -14,6 +14,8 @@
      「保護ゾーン」として、削除・上書きせず相手側の既存内容を保持する。
    - `CLAUDE.md`⇔`AGENTS.md` の相互参照を変換する(両陣営を意図的に併記するメタ文書は
      `REFERENCE_REWRITE_EXEMPT` で除外)。
+   - skill 自身のファイルを指す `${CLAUDE_SKILL_DIR}/` を、prompt 側では
+     `.claude/skills/<name>/` にする(Copilot では置き換わらないため)。
 
 skill 本体(`.claude/skills/<name>/`)はミラーを持たない。Claude Code・Copilot・Codex の
 いずれも `.claude/skills/` を直接参照する(Codex 向けに `.agents/skills` がシンボリック
@@ -74,7 +76,12 @@ TASK_REFERENCE_MAP = [
 
 # 相互参照の書き換えを行わないタスクスキル。両陣営を意図的に併記するメタ文書
 # (このスキル自身のように「CLAUDE.md と AGENTS.md」を並べて説明するもの)を登録する。
-REFERENCE_REWRITE_EXEMPT = {"sync-agent-docs"}
+REFERENCE_REWRITE_EXEMPT = {"sync-agent-docs", "skill-ablation"}
+
+# Claude Code は SKILL.md の `${CLAUDE_SKILL_DIR}` を skill の置き場所(plugin で入れた場合は
+# プロジェクトの外)に置き換えるが、Copilot の prompt では置き換わらない。prompt 側では
+# リポジトリ内のパス `.claude/skills/<name>/` にする
+SKILL_DIR_PLACEHOLDER = "${CLAUDE_SKILL_DIR}/"
 
 
 # --------------------------------------------------------------------------------------
@@ -300,6 +307,24 @@ def rewrite_task_references(text: str, *, to_prompt: bool, name: str) -> str:
     return text
 
 
+def rewrite_skill_dir(text: str, *, to_prompt: bool, name: str) -> str:
+    """`${CLAUDE_SKILL_DIR}/` ⇔ `.claude/skills/<name>/` を変換する。
+
+    `REFERENCE_REWRITE_EXEMPT` のスキルにも適用する(こちらは文意ではなくパスの解決の問題のため)。
+
+    Args:
+        text: 変換対象のテキスト。
+        to_prompt: TrueならClaude→Copilot方向、Falseなら逆方向。
+        name: タスクスキル名(リポジトリ内のパスに使う)。
+
+    Returns:
+        変換後のテキスト。
+    """
+    repo_dir = f".claude/skills/{name}/"
+    src, dst = (SKILL_DIR_PLACEHOLDER, repo_dir) if to_prompt else (repo_dir, SKILL_DIR_PLACEHOLDER)
+    return text.replace(src, dst)
+
+
 # --------------------------------------------------------------------------------------
 # タスクスキル ⇔ prompt の相互変換
 # --------------------------------------------------------------------------------------
@@ -327,6 +352,7 @@ def claude_task_skill_to_prompt(
     )
 
     body = rewrite_task_references(body, to_prompt=True, name=name)
+    body = rewrite_skill_dir(body, to_prompt=True, name=name)
     if not arg_names:
         return frontmatter + body, None
 
@@ -384,6 +410,7 @@ def prompt_to_claude_task_skill(
     )
 
     body = rewrite_task_references(body, to_prompt=False, name=name)
+    body = rewrite_skill_dir(body, to_prompt=False, name=name)
     if not arg_names:
         return frontmatter + body, None
 

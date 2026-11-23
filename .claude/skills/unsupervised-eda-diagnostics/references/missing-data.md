@@ -31,35 +31,16 @@
 |---|---|---|---|
 | 欠測 | 変数別欠測率 | 5% 超の変数を列挙 | 50% 超は変数として使うか再検討 |
 | 欠測 | 欠測機構の見立て（MCAR / MAR / MNAR） | 根拠付きで明記（欠測フラグと他変数の関連、時期との関連） | MNAR の疑いなら感度分析（欠測を変数化、pattern-mixture） |
-| 欠測 | 採用した処理と失う n | リストワイズ削除なら失う割合を報告 | 推論目的なら多重代入（MICE、m ≥ 20）を第一候補に |
+| 欠測 | 採用した処理と失う n | リストワイズ削除なら失う割合を報告 | 推論目的なら多重代入（MICE、m ≥ 20）を第一候補に。予測用の特徴量を作る単一代入は `IterativeImputer(sample_posterior=True, random_state=0)` を第一候補に（事後分布から引くので、代入値のばらつきが縮まない） |
 | 外れ値 | 外れ値候補の件数と実データ確認 | 入力ミス・単位違い・別母集団のどれかを判定 | 除外するなら基準・件数・感度分析（あり / なし両方）を報告 |
 | 外れ値・EDA | 歪度 | \|歪度\| > 2 で変換検討 | log1p / Yeo-Johnson（変換の有無を報告） |
 | EDA | \|r\| > 0.9 の変数ペア | 列挙（後段の共線性の予告） | — |
-| 共通 | 除外・変換・代入の操作ログ | 件数付きで報告に含む | — |
 
-取得例（`df` は polars、`X_train` は数値列だけの polars DataFrame）:
+取得例（外れ値・EDA を扱う場合。`X_train` は数値列だけの polars DataFrame）:
 
 ```python
-import missingno as msno
 import polars as pl
-from sklearn.experimental import enable_iterative_imputer  # noqa: F401
-from sklearn.impute import IterativeImputer
 
-# 欠測
-miss_rate = (df.null_count().transpose(include_header=True, header_name="列", column_names=["n"])
-             .with_columns(rate=pl.col("n") / df.height).sort("rate", descending=True))  # 5% 超を列挙
-df_pd = df.to_pandas()  # missingno は pandas 入力のみ
-msno.matrix(df_pd)  # 欠測パターン
-if (miss_rate["n"] > 0).sum() >= 2:
-    msno.heatmap(df_pd)  # 欠測相関は欠測のある列が 2 つ以上のときだけ描ける
-# 代入: train のみで fit（リーク防止）
-imp = IterativeImputer(random_state=0, sample_posterior=True).fit(X_train.to_numpy())
-X_imp = pl.DataFrame(imp.transform(X_train.to_numpy()), schema=X_train.columns)
-```
-
-外れ値・EDA を扱う場合:
-
-```python
 # 外れ値候補（IQR の 1.5 倍の外側）の件数。除外するかは実データを見て人間が決める
 outlier_n = X_train.select(
     ((pl.col(c) < pl.col(c).quantile(0.25) - 1.5 * (pl.col(c).quantile(0.75) - pl.col(c).quantile(0.25)))

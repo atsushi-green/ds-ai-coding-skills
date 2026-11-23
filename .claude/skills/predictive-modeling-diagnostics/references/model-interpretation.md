@@ -37,7 +37,7 @@
 | 共通 | 「解釈 ≠ 因果」の 1 文 | 報告冒頭にある | 因果を主張するなら `causal-inference-diagnostics` へ |
 | 共通 | 図に描いた特徴数 / 全特徴数 | 上位に絞ったなら、全特徴の重要度（使った手法の平均・SD）の表を別に出す | 図に写っている特徴だけで「効いている変数はこれ」と言わない |
 | 共通 | 相関 \|r\| > 0.8 のペア | 列挙され、重要度の分散が注記されている | グループ permutation（相関ペアを同時に置換）で再計算 |
-| 共通 | 重要度順位の安定性（fold 間の Spearman ρ の最小値。使った手法の重要度で計算） | ρ > 0.7 | 「上位 k 個の集合」として報告し、順位を主張しない |
+| 共通 | 重要度順位の安定性（fold 間の Spearman ρ の最小値。使った手法の重要度で計算し、SHAP なら fold ごとの平均 \|SHAP\| を使う） | ρ > 0.7 | 「上位 k 個の集合」として報告し、順位を主張しない |
 | permutation importance | `scoring` | 運用で使う指標を明示する（順位で使うなら `roc_auc` / `average_precision`、閾値を決めて使うなら `f1` / `recall` / `precision`、回帰は `neg_root_mean_squared_error` など）。報告にも指標名を書く | `scoring` を省くと推定器の `score()`（分類器 = accuracy、回帰 = R²）が使われる。不均衡データの accuracy は少数派を全部外しても下がらず、重要度が 0 付近に潰れて順位が読めない。指標が変われば順位も変わるので、指標名のない重要度は解釈しない |
 | SHAP | 加法性の検算（数件） | `base_value + Σshap ≒ 予測値`（差 < 1e-6 目安） | 分類器の `TreeExplainer` は既定が対数オッズ（`model_output="raw"`）なので `predict_proba` と比べない。対数オッズのまま検算して報告に明記するか、確率で解釈したいなら `model_output="probability"` に切り替える |
 | 2 手法以上を使ったとき | 手法間の順位一致（例: PI 平均と平均 \|SHAP\| の Spearman ρ） | 上位の顔ぶれが一致する | 食い違う特徴を列挙し、相関ペアかどうかを確認する |
@@ -62,21 +62,6 @@ imps = [permutation_importance(clone(model).fit(X.iloc[tr], y.iloc[tr]), X.iloc[
 rho_min = min(spearmanr(a, b).statistic for a, b in combinations(imps, 2))  # 順位の安定性（> 0.7）
 ```
 
-SHAP（安定性は fold ごとの平均 \|SHAP\| で上と同じ計算をする）:
-
-```python
-import shap
-
-sv = shap.TreeExplainer(model)(X_va)  # 木以外: shap.KernelExplainer(model.predict, shap.kmeans(X_tr, 50))
-# 分類で確率空間の SHAP が要るなら背景データ付きで（背景なしの probability は tree_path_dependent と両立せずエラー）:
-#   shap.TreeExplainer(model, data=shap.sample(X_tr, 100, random_state=0),
-#                      model_output="probability", feature_perturbation="interventional")
-additivity_gap = np.abs(sv.base_values + sv.values.sum(axis=1) - model.predict(X_va)).max()  # 加法性の検算
-shap.plots.beeswarm(sv, max_display=20, show=False)
-# PI も使ったときだけ: 手法間の順位一致
-rho_methods = spearmanr(pi.importances_mean, np.abs(sv.values).mean(axis=0)).statistic
-```
-
 PDP / ICE:
 
 ```python
@@ -97,4 +82,4 @@ PartialDependenceDisplay.from_estimator(model, X_va, top, kind="both", subsample
   sorted(zip(X.columns, np.abs(lr.coef_), strict=True), key=lambda t: -t[1])
   ```
 - 代理モデル（決定木で GBDT を説明する等）を使うなら忠実度（元モデルとの R² / accuracy）を必ず出す
-- 分類器の SHAP は `model_output` が log-odds か確率かで値の意味が変わる。報告に明記する。対数オッズの SHAP 値を後から確率に変換しても加法性は保たれない（変換が非線形）ので、確率で足し合わせたいなら最初から `model_output="probability"` で計算する
+- 分類器の SHAP は `model_output` が log-odds か確率かで値の意味が変わる。報告に明記する。対数オッズの SHAP 値を後から確率に変換しても加法性は保たれない（変換が非線形）ので、確率で足し合わせたいなら最初から `model_output="probability"` で計算する（`TreeExplainer` に背景データ `data=` と `feature_perturbation="interventional"` を渡す。背景なしの probability はエラーになる）

@@ -10,7 +10,8 @@ from typing import Any
 
 from skill_eval.cases import Case, expected_figures
 
-STATUS_MARK = {"PASS": "✅", "FAIL": "❌", "ERROR": "⚠️"}
+# DONE は skill を間引いた arm の実行（発火の合否を付けない）
+STATUS_MARK = {"PASS": "✅", "FAIL": "❌", "ERROR": "⚠️", "DONE": "➖"}
 
 
 def load_results(run_dir: Path) -> list[dict[str, Any]]:
@@ -75,6 +76,18 @@ def _group(results: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     return grouped
 
 
+def _arm_lines(run_meta: dict[str, Any]) -> list[str]:
+    # skill を間引いた arm の実行なら、何を外したかを冒頭に出す（full なら何も足さない）
+    arm = run_meta.get("arm") or {}
+    if not arm.get("operations"):
+        return []
+    return [
+        f"- arm: {arm.get('name', '')}（{arm.get('description', '')}）。"
+        "skill を間引いた条件なので、発火の合否は付けない",
+        f"- 間引いた内容: {' / '.join(arm['operations'])}",
+    ]
+
+
 def build_markdown(
     run_meta: dict[str, Any], cases: list[Case], results: list[dict[str, Any]]
 ) -> str:
@@ -89,6 +102,7 @@ def build_markdown(
         f"{run_meta.get('config', {}).get('model') or '既定'}",
         f"- git HEAD: {run_meta.get('git_head', '')}（skills の内容ハッシュ: "
         f"{run_meta.get('skills_hash', '')[:12]}）",
+        *_arm_lines(run_meta),
         "",
         "判定は「期待した skill・references が読まれ、禁止したものが読まれていないか」だけ。"
         "図の中身は index.html のサムネイルと references の「必ず出す図」を見比べて判断する。",
@@ -171,7 +185,7 @@ h1{font-size:22px}h2{font-size:17px;margin-top:40px}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
 th{position:sticky;top:0;background:var(--bg)}
-.PASS{color:var(--ok)}.FAIL{color:var(--ng)}.ERROR{color:var(--warn)}
+.PASS{color:var(--ok)}.FAIL{color:var(--ng)}.ERROR{color:var(--warn)}.DONE{color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;
 padding:12px 16px;margin:12px 0}
 pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);
@@ -273,7 +287,10 @@ def build_html(
         f"<p class=muted>claude {e(str(run_meta.get('claude_version', '')))} / model "
         f"{e(str(cfg.get('model') or '既定'))} / git {e(str(run_meta.get('git_head', '')))} / "
         f"skills hash {e(str(run_meta.get('skills_hash', ''))[:12])}</p>"
-        "<p class=muted>判定は発火（期待した skill・references を読んだか、"
+        + "".join(
+            f"<p class=muted>{e(line.removeprefix('- '))}</p>" for line in _arm_lines(run_meta)
+        )
+        + "<p class=muted>判定は発火（期待した skill・references を読んだか、"
         "禁止したものを読んでいないか）だけ。図の中身は各カードで「必ず出す図」と見比べる。</p>"
         "<div class=scroll><table><thead><tr><th>ケース</th><th>種別</th><th>発火</th>"
         "<th>プロンプト</th><th>期待 references</th><th>発火した skill</th>"

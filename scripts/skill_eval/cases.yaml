@@ -80,8 +80,52 @@ config:
     - .gitignore
     - src
     - docs/agent
+  # copy の中でもコピーしないもの。skill-ablation はこの比較の手順を書いた道具で、どの条件にも入れない
+  copy_ignore:
+    - skill-ablation
   data_files:
     - data/raw/train.csv
+  # ファイルは置くが、中身は見せないもの（どの条件でも同じ）。README.md は pyproject.toml の readme が
+  # 指しているので消せない。一方で診断 skill の説明と比較結果が書いてあり、エージェントが読むと
+  # skill の有無による差を測れなくなる
+  stub_files:
+    "README.md": "# analysis-project\n"
+
+# skill 要否テストで比べる条件（arm）。`run --arm <名前>` で選ぶ。sandbox にリポジトリをコピーした直後、
+# ここに書いた操作で skill を間引いてから実行する（リポジトリの skill には触れない）。
+#   extends        先に定義した arm の操作を引き継ぎ、その後に自分の操作を足す
+#   remove         sandbox から消すパス（glob）
+#   drop_sections  ファイル → 消す節の見出し（その節だけを消す）
+#   drop_lines     files の各ファイルから、patterns（正規表現）に当たる行を消す
+#   insert_after   ファイル → after の行（完全一致・1 つだけ）の直後に line を足す。行を消した後に適用する
+# full 以外の arm では期待する skill 自体が無いので、発火の合否は付けない。
+arms:
+  full:
+    description: 現行の skill をそのまま使う（発火テストと同じ）
+  no-diagnostics:
+    description: "*-diagnostics の機能だけを外す（ルーターと references、それを指す記述）。基本 skill は残す"
+    remove:
+      - ".claude/skills/*-diagnostics"
+      - ".claude/skills/statistical-ml-review" # 手法 → references の対応表を持つ
+      - "docs/agent/diagnostics-reference-template.md"
+    drop_sections:
+      ".claude/skills/analysis-reporting/SKILL.md": ["## Diagnostics Summary（診断サマリー）"]
+      ".claude/skills/analysis-reporting/references/report-template.md": ["### 診断サマリー"]
+    drop_lines:
+      - files: ["CLAUDE.md", ".gitignore", "docs/agent/*.md", ".claude/skills/**/*.md"]
+        patterns: ["diagnostics", "診断", "必ず出す", "statistical-ml-review"]
+  # 診断について書くのはルーター文書の 1 行だけ、という条件。現行の Hard Rule から skill への
+  # 言及を除いた文にしてある。この 1 行で出る図・値は、references に書かなくてもよい候補になる
+  agents-md-rule:
+    description: 診断 skill を外し、ルーター文書（CLAUDE.md）に「診断の図と値をセットで出す」の 1 行だけを置く
+    extends: no-diagnostics
+    insert_after:
+      "CLAUDE.md":
+        - after: "- Use `uv` exclusively for Python dependency management. Never use pip, conda, poetry, or pipenv."
+          line: "- When applying a statistical, ML, causal, simulation, or optimization method, always output its diagnostics with it (図と値をセットで出す)."
+  bare:
+    description: skill も CLAUDE.md も置かない（モデルの素の挙動）
+    remove: [".claude", "CLAUDE.md", "docs/agent"]
 
 # references の中で、手法・条件によって「必ず出す図」が分かれる分岐。キーは references のファイル名（拡張子なし）。
 # 各ケースの covers でどの分岐を試すかを書き、すべての分岐が少なくとも 1 ケースで試されていることをテストで確かめる。
