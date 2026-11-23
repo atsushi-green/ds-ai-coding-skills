@@ -185,6 +185,23 @@ def test_rewrite_task_references_exempt_preserves_bilingual_meta() -> None:
     assert sync.rewrite_task_references(text, to_prompt=True, name="sync-agent-docs") == text
 
 
+def test_skill_dir_placeholder_becomes_repo_path_in_prompt_even_for_exempt_skill() -> None:
+    # Copilot は ${CLAUDE_SKILL_DIR} を置き換えないので、prompt ではリポジトリ内のパスにする
+    claude = (
+        "---\nname: skill-ablation\ndescription: 実験\ndisable-model-invocation: true\n---\n\n"
+        "```bash\npython3 ${CLAUDE_SKILL_DIR}/scripts/ablate.py plan  # CLAUDE.md も見る\n```\n"
+    )
+    prompt, reason = sync.claude_task_skill_to_prompt(claude, "skill-ablation", None)
+    assert reason is None and prompt is not None
+    assert "python3 .claude/skills/skill-ablation/scripts/ablate.py plan" in prompt
+    assert "${CLAUDE_SKILL_DIR}" not in prompt
+    # 相互参照の書き換えは除外のまま
+    assert "CLAUDE.md も見る" in prompt
+    back, reason = sync.prompt_to_claude_task_skill(prompt, "skill-ablation", claude)
+    assert reason is None and back is not None
+    assert sync.normalize(back) == sync.normalize(claude)
+
+
 # --------------------------------------------------------------------------------------
 # 変換の中心的な契約: 内容非破壊・YAML妥当・往復・編集伝播
 # --------------------------------------------------------------------------------------

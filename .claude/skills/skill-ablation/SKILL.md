@@ -33,12 +33,12 @@ skill を外した状態で同じ依頼を投げ、外しても出てくるも�
 uv を使うリポジトリなら `uv run python`、そうでなければ `python3` で実行する。
 
 ```bash
-cp .claude/skills/skill-ablation/assets/ablation.example.toml ablation.toml   # 書き換える
-python3 .claude/skills/skill-ablation/scripts/ablate.py plan                  # 操作と残った語の確認（claude は起動しない）
-python3 .claude/skills/skill-ablation/scripts/ablate.py run --arm none --label exp1 --case c1 --repeat 1   # 試運転
-python3 .claude/skills/skill-ablation/scripts/ablate.py run --arm none --label exp1 --resume             # 本番（条件ごと）
-python3 .claude/skills/skill-ablation/scripts/ablate.py score outputs/ablation/exp1                      # 採点（API は呼ばない）
-python3 .claude/skills/skill-ablation/scripts/ablate.py hits val-vif outputs/ablation/exp1               # 1 項目の根拠を目で見る
+cp ${CLAUDE_SKILL_DIR}/assets/ablation.example.toml ablation.toml   # 書き換える
+python3 ${CLAUDE_SKILL_DIR}/scripts/ablate.py plan                  # 操作と残った語の確認（claude は起動しない）
+python3 ${CLAUDE_SKILL_DIR}/scripts/ablate.py run --arm none --label exp1 --case c1 --repeat 1   # 試運転
+python3 ${CLAUDE_SKILL_DIR}/scripts/ablate.py run --arm none --label exp1 --resume             # 本番（条件ごと）
+python3 ${CLAUDE_SKILL_DIR}/scripts/ablate.py score outputs/ablation/exp1                      # 採点（API は呼ばない）
+python3 ${CLAUDE_SKILL_DIR}/scripts/ablate.py hits val-vif outputs/ablation/exp1               # 1 項目の根拠を目で見る
 ```
 
 - sandbox はリポジトリの外（一時ディレクトリ）に、git 管理下のファイルだけをコピーして作る。リポジトリには書き込まない

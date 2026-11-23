@@ -21,6 +21,15 @@
         "./.claude/skills/unsupervised-eda-diagnostics",
         "./.claude/skills/simulation-optimization-diagnostics"
       ]
+    },
+    {
+      "name": "skill-ablation",
+      "source": "./",
+      "description": "Check which instructions in your skills are still needed: run the same prompts without the skill, with one line in AGENTS.md / CLAUDE.md, and with the full skill, count the required outputs, and prune what makes no difference.",
+      "repository": "https://github.com/atsushi-green/ds-ai-coding-skills",
+      "license": "MIT",
+      "keywords": ["skills", "evaluation", "ablation", "claude-code"],
+      "skills": ["./.claude/skills/skill-ablation"]
     }
   ]
 }
