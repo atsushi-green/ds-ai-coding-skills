@@ -116,9 +116,9 @@ GitHub の **Use this template** から新しいリポジトリを作るか、cl
 | | リンク | 内容 |
 |:-:|---|---|
 | 📊 | [**診断図ギャラリー**](https://atsushi-green.github.io/ds-ai-coding-skills/) | 各 `*-diagnostics` skill が「必ず出す」と定めた図を、実データで出力して並べたもの |
-| 🔬 | [**診断 skill は本当に要るのか**](docs/skill-ablation.md) | skill を外して同じ依頼を投げ、「必ず出す」図と値がどれだけ出るかを比べた結果 |
 | 📝 | [**データサイエンティストのためのAGENTS.mdとSkills**](https://zenn.dev/green_tea/articles/d310e5cf809190) | ルーター文書（`AGENTS.md`）と、Python・SQL・データ処理・可視化などの基本 skill の設計 |
 | 📝 | [**続・データサイエンティストのためのSkills:分析手法×診断可視化セット**](https://zenn.dev/green_tea/articles/55d2761106ee74) | `*-diagnostics` skill 群（図と値をセットで出させる仕組み）の設計と動作例 |
+| 📝 | [**ちょっと待って！そのSkills本当に必要？―skillなしと比べて指示を削る**](https://zenn.dev/green_tea/articles/5eea2714ba1db2) | skill を外して同じ依頼を投げ、「必ず出す」図と値がどれだけ出るかを比較実験 |
 
 ## テンプレートとして使うときのセットアップ
 
